@@ -15,11 +15,11 @@ except ImportError:
     pass
 
 import xattr
-import psutil
+#import psutil  # import for experimental xopen functionality
 from git import Repo
 from dateutil import parser
-from Xlib.display import Display
-from Xlib import Xatom
+#from Xlib.display import Display
+#from Xlib import Xatom
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.utils import log, default_cypher, StatResult, etag

@@ -37,11 +37,12 @@ setup(
     python_requires='>=3.6',
     tests_require=tests_require,
     install_requires=[
+        #'psutil',
         'python-dateutil',
         'python-magic',  # FIXME conflicts with sys-apps/file python bindings
         'pyxattr',
         'terminaltables',
-        'Xlib',
+        #'Xlib',
     ],
     extras_require={'dev': ['pytest-cov', 'wheel'],
                     'test': tests_require},
