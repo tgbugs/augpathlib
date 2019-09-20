@@ -38,6 +38,7 @@ setup(
     tests_require=tests_require,
     install_requires=[
         'gitpython',
+        'pexpect>=4.7.0',
         #'psutil',
         'python-dateutil',
         'python-magic',  # FIXME conflicts with sys-apps/file python bindings
