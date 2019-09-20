@@ -1,16 +1,16 @@
+from augpathlib.meta import PathMeta
 from augpathlib.core import (AugmentedPath,
                              XattrPath,
                              RepoPath,
                              XopenPath,
                              LocalPath)
-from augpathlib.core import (CachePath,
-                             PrimaryCache,
-                             SqliteCache,
-                             SymlinkCache,
-                             XattrCache,
-                             SshCache)
-from augpathlib.core import RemotePath
-from augpathlib.meta import PathMeta
+from augpathlib.caches import (CachePath,
+                               PrimaryCache,
+                               SqliteCache,
+                               SymlinkCache,
+                               XattrCache,
+                               SshCache)
+from augpathlib.remotes import RemotePath
 from augpathlib.utils import StatResult, FileSize, etag
 
 __all__ = [
