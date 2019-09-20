@@ -37,6 +37,7 @@ setup(
     python_requires='>=3.6',
     tests_require=tests_require,
     install_requires=[
+        'dateutil',
         'python-magic',  # FIXME conflicts with sys-apps/file python bindings
         'pyxattr',
         'terminaltables',
