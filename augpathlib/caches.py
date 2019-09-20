@@ -2,7 +2,7 @@ from pathlib import PurePosixPath
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.core import AugmentedPath, XattrPath
-from augpathlib.utils import log, LOCAL_DATA_DIR
+from augpathlib.utils import log, LOCAL_DATA_DIR, default_cypher
 from augpathlib import remotes
 
 
@@ -708,7 +708,7 @@ class CachePath(AugmentedPath):
         return self.__class__.__name__ + ' <' + local + ' -> ' + remote + '>'
 
 
-class ReflectiveCachePath(CachePath):
+class ReflectiveCache(CachePath):
     """ Oh, it's me. """
 
     @property
@@ -1042,6 +1042,7 @@ class SshCache(PrimaryCache, XattrCache):
     xattr_prefix = 'ssh'
     _backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
+    cypher = default_cypher
 
     @property
     def anchor(self):

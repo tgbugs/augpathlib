@@ -5,8 +5,10 @@ from pyontutils.utils import makeSimpleLogger
 
 log = makeSimpleLogger('augpathlib')
 
-default_cypher = hashlib.blake2b
 LOCAL_DATA_DIR = '.operations'
+default_cypher = hashlib.blake2b
+cypher_command_lookup = {hashlib.sha256:'sha256sum',
+                         hashlib.blake2b:'b2sum'}
 
 
 def _bind_sysid_(cls):
