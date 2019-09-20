@@ -23,7 +23,7 @@ from Xlib import Xatom
 from augpathlib import exceptions as exc
 from augpathlib.utils import log, default_cypher, StatResult, etag
 from augpathlib.utils import _bind_sysid_, LOCAL_DATA_DIR
-from augpathlib.pathmeta import PathMeta
+from augpathlib.meta import PathMeta
 
 _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
 

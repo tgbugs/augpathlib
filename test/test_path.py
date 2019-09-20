@@ -3,7 +3,7 @@ from pathlib import PurePosixPath
 from augpathlib import AugmentedPath
 from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
-from augpathlib.pathmeta import _PathMetaAsSymlink, _PathMetaAsXattrs
+from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
 from .common import project_path, test_base, test_path, TestPathHelper
 from .common import TestLocalPath, TestCachePath, TestRemotePath
 
