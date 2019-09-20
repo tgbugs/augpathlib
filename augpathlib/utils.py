@@ -1,6 +1,5 @@
 import base64
 import hashlib
-from pyontutils.utils import sysidpath
 from pyontutils.utils import makeSimpleLogger
 
 log = makeSimpleLogger('augpathlib')
@@ -9,6 +8,38 @@ LOCAL_DATA_DIR = '.operations'
 default_cypher = hashlib.blake2b
 cypher_command_lookup = {hashlib.sha256:'sha256sum',
                          hashlib.blake2b:'b2sum'}
+red = '\x1b[31m{}\x1b[0m'  # use as red.format(value)
+
+
+def sysidpath(ignore_options=False, path_class=Path):
+    """ get a unique identifier for the machine running this function """
+    # in the event we have to make our own
+    # this should not be passed in a as a parameter
+    # since we need these definitions to be more or less static
+    failover = path_class('/var/tmp/machine-id')  # /var/tmp is more persistent than /tmp/
+
+    if hasattr(path_class, 'access'):
+        accessf = lambda p: p.access(os.R_OK)
+    else:
+        # pypy3 3.6 still needs as_poxix here :/
+        accessf = lambda p: os.access(p.as_posix(), os.R_OK)
+
+    if not ignore_options:
+        options = (
+            path_class('/etc/machine-id'),
+            failover,  # always read to see if we somehow managed to persist this
+        )
+        for option in options:
+            if (option.exists() and
+                accessf(option) and
+                option.stat().st_size > 0):
+                    return option
+
+    uuid = uuid4()
+    with failover.open('wt') as f:
+        f.write(uuid.hex)
+
+    return failover
 
 
 def _bind_sysid_(cls):

@@ -5,11 +5,17 @@ import pickle
 import struct
 from pathlib import PurePosixPath
 from datetime import datetime
-from dateutil import parser
+from dateutil import parser as dateparser
 from terminaltables import AsciiTable
-from pyontutils.utils import TermColors as tc, isoformat
 from augpathlib import exceptions as exc
 from augpathlib.utils import log, FileSize
+
+
+def isoformat(datetime_instance, timespec='auto'):
+    return (datetime_instance
+            .isoformat(timespec=timespec)
+            .replace('.', ',')
+            .replace('+00:00', 'Z'))
 
 
 class PathMeta:
@@ -43,10 +49,10 @@ class PathMeta:
         if not file_id and file_id is not None and file_id is not 0:
             raise TypeError('wat')
         if created is not None and not isinstance(created, int) and not isinstance(created, datetime):
-            created = parser.parse(created)
+            created = dateparser.parse(created)
 
         if updated is not None and not isinstance(updated, int) and not isinstance(updated, datetime):
-            updated = parser.parse(updated)
+            updated = dateparser.parse(updated)
 
         if id is not None and not isinstance(id, str):
             # no implicit type mutation, the system providing the ids
@@ -231,7 +237,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             return [_ for _ in value.split(self.subfieldsep) if _]
 
         elif field in ('created', 'updated'):
-            return parser.parse(value)
+            return dateparser.parse(value)
 
         elif field == 'checksum':  # FIXME checksum encoding ...
             #return value.encode()
@@ -418,8 +424,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
             value = ';'.join(value)
 
         if isinstance(value, datetime):  # FIXME :/ vs iso8601
-            value = value.isoformat().replace('.', ',')
-            #value = value.timestamp()  # I hate dealing with time :/
+            value = isoformat(value)
 
         if isinstance(value, int):
             # this is local and will pass through here before move?
@@ -445,7 +450,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
             except struct.error:
                 pass
 
-            return parser.parse(value.decode())  # FIXME with timezone vs without ...
+            return dateparser.parse(value.decode())  # FIXME with timezone vs without ...
 
         elif field == 'checksum':
             return value
@@ -597,7 +602,7 @@ class _PathMetaAsPrettyDiff(_PathMetaAsPretty):
                 title = ''
             
         if pathmeta.content_different(othermeta):
-            title = tc.red(title)
+            title = red.format(title)
 
         def merge(a, b):
             keys = [k for k, _ in a]
