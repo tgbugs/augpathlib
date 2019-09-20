@@ -608,11 +608,12 @@ class LocalPath(XattrPath):
     def children(self):
         if self.is_dir():
             if self.cache is not None and self == self.cache.anchor.local:
+                cache_ignore = self._cache_class.cache_ignore
                 # implemented this way we can still use Path to navigate
                 # once we are inside local data dir, though all files there
                 # are skip_cache -> True
                 for path in self.iterdir():
-                    if path.stem == LOCAL_DATA_DIR:
+                    if path.stem in cache_ignore:
                         continue
 
                     yield path
