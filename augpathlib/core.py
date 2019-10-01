@@ -185,6 +185,29 @@ class AugmentedPath(PosixPath):
     def rename(self, target):
         os.rename(self, target)
 
+    def remove_recursive(self, *, DANGERZONE=False):
+        """ DANGER ZONE """
+        if not self.is_absolute():
+            raise exc.WillNotRemovePathError(f'Only absolute paths can be removed recursively. {self}')
+
+        if not (DANGERZONE is True):  # prevent python type coersion
+            # TODO test in a chroot
+            lenparts = len(self.parts)
+            if lenparts <= 2:
+                raise exc.WillNotRemovePathError(f'Will not remove top level paths. {self}')
+            elif lenparts <= 3 and 'home' in self.parts:
+                raise exc.WillNotRemovePathError(f'Will not remove home directories. {self}')
+            elif self == self.cwd():
+                raise exc.WillNotRemovePathError(f'Will not remove current working directory. {self}')
+
+        if self.is_dir():
+            for path in self.iterdir():
+                path.remove_recursive()
+
+            self.rmdir()
+        else:
+            self.unlink()
+
     def chdir(self):
         os.chdir(self)
 
