@@ -152,7 +152,7 @@ class CachePath(AugmentedPath):
             try:
                 child = self._make_child(remote._parts_relative_to(self.remote, self.parent), remote)
             except AttributeError as e:
-                raise exc.SparCurError('aaaaaaaaaaaaaaaaaaaaaa') from e
+                raise exc.AugPathlibError('aaaaaaaaaaaaaaaaaaaaaa') from e
 
             return child
         else:

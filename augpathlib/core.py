@@ -365,6 +365,7 @@ class LocalPath(XattrPath):
         found_cache = None
         # try all the variants in case some symlinking weirdness is going on
         # TODO may want to detect and warn on that?
+        root = self.__class__('/')
         for variant in set((self, self.absolute(), self.resolve())):
             for parent in chain((variant,), variant.parents):
                 try:
@@ -374,11 +375,11 @@ class LocalPath(XattrPath):
                     # if we had a cache, went to the parent and lost it
                     # then we are at the root, assuming of course that
                     # there aren't sparse caches on the way up (down?) the tree
-                    if found_cache is not None and found_cache != Path('/'):
+                    if found_cache is not None and found_cache != root:
                         return found_cache
 
             else:
-                if found_cache and found_cache != Path('/'):
+                if found_cache and found_cache != root:
                     return found_cache
 
     @property
