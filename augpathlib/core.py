@@ -241,7 +241,12 @@ class AugmentedPath(PosixPath):
     def _magic_mimetype(self):
         """ This can be slow because it has to open the files. """
         if self.exists():
-            return magic.detect_from_filename(self).mime_type
+            if hasattr(magic, 'detect_from_filename'):
+                # sys-apps/file python-magic api
+                return magic.detect_from_filename(self).mime_type
+            else:
+                # python-magic
+                return magic.from_file(self.as_posix(), mime=True)
 
     def checksum(self, cypher=default_cypher):
         """ checksum() always recomputes from the data
