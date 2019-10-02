@@ -45,6 +45,13 @@ class CachePath(AugmentedPath):
         local_class._cache_class = cls
         remote_class_factory._cache_class = cls
 
+    def anchorClassHere(self):
+        """ Use this to initialize the class level anchor from an instance. """
+        if not hasattr(self.__class__, '_anchor'):
+            self.__class__._anchor = self
+        else:
+            raise ValueError(f'{self.__class__} already anchored to {self.__class__._anchor}')
+
     @property
     def local_class(self):
         if self.is_helper_cache:
@@ -396,6 +403,7 @@ class CachePath(AugmentedPath):
             self._bootstrapping_id = id  # so we set it again
             anchor = self  # could double check if the id has the info too ...
 
+        # FIXME remove?
         if self._remote_class_factory is not None or (hasattr(self, '_remote_class') and
                                                       self._remote_class is not None):
             # we don't have to have a remote configured to check the cache

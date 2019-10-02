@@ -382,7 +382,7 @@ class LocalPath(XattrPath):
 
         cache = self._cache_class(self, meta=id_or_meta)
         if anchor:
-            self._cache_class._anchor = cache
+            cache.anchorClassHere()
 
         return cache
 
