@@ -185,7 +185,7 @@ class AugmentedPath(PosixPath):
     def rename(self, target):
         os.rename(self, target)
 
-    def remove_recursive(self, *, DANGERZONE=False):
+    def rmtree(self, ignore_errors=False, onerror=None, DANGERZONE=False):
         """ DANGER ZONE """
         if not self.is_absolute():
             raise exc.WillNotRemovePathError(f'Only absolute paths can be removed recursively. {self}')
@@ -200,13 +200,28 @@ class AugmentedPath(PosixPath):
             elif self == self.cwd():
                 raise exc.WillNotRemovePathError(f'Will not remove current working directory. {self}')
 
-        if self.is_dir():
-            for path in self.iterdir():
-                path.remove_recursive()
+        try:
+            if self.is_dir():
+                for path in self.iterdir():
+                    path.rmtree(DANGERZONE=DANGERZONE)
 
-            self.rmdir()
-        else:
-            self.unlink()
+                path = self
+                self.rmdir()
+            else:
+                path = self
+                self.unlink()
+
+        except exc.WillNotRemovePathError:
+            raise
+
+        except BaseException as e:
+            if not ignore_errors:
+                if onerror is not None:
+                    ftype = 'rmdir' if path.is_dir() else 'unlink'
+                    func = getattr(path, ftype)
+                    onerror(func, path, sys.exc_info())
+                else:
+                    raise e
 
     def chdir(self):
         os.chdir(self)

@@ -20,6 +20,10 @@ class PathNotEmptyError(AugPathlibError):
     """ folder has children and is not empty, don't overwrite """
 
 
+class WillNotRemovePathError(AugPathlibError):
+    """ we will not even try to remove this path unless you enter the DANGERZONE """
+
+
 class MetadataIdMismatchError(AugPathlibError):
     """ there is already cached metadata and id does not match """
 
