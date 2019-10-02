@@ -243,7 +243,7 @@ class AugmentedPath(PosixPath):
         if AugmentedPath._stack:
             path = AugmentedPath._stack.pop(reversed_index)
             path.chdir()
-            print(*reversed(AugmentedPath._stack), self.cwd())
+            print(*reversed(AugmentedPath._stack), AugmentedPath.cwd())
             return path
         else:
             log.warning('popd: directory stack empty')
