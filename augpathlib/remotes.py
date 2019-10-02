@@ -98,7 +98,7 @@ class RemotePath:
                     raise NotImplementedError(f'What\'s a {root}?!')
 
             elif list(path.children):
-                raise exc.NotEmptyError(f'has children {path}')
+                raise exc.DirectoryNotEmptyError(f'has children {path}')
 
             cls._cache_anchor = path.cache_init(root.id, anchor=True)
             return cls._cache_anchor

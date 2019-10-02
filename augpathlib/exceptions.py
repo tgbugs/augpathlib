@@ -12,6 +12,10 @@ class PathExistsError(AugPathlibError):
     """ path exists so don't try to symlink """
 
 
+class DirectoryNotEmptyError(AugPathlibError):
+    """ directory is not empty """
+
+
 class TargetPathExistsError(PathExistsError):
     """ when adding to a path if fail_on_exists is set raise this """
 
