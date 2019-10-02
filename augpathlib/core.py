@@ -594,6 +594,7 @@ class LocalPath(XattrPath):
     def data(self, generator):
         if self.cache is not None:
             cmeta = self.cache.meta
+
         # FIXME do we touch a file, write the meta
         # and then write the data?
         # do we touch a temporary file, write the meta

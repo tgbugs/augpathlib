@@ -100,6 +100,7 @@ class CachePath(AugmentedPath):
             self._meta_updater(meta)
         else:
             if self.meta is None:
+                delattr(self._local, '_cache')
                 raise exc.NoCachedMetadataError(self.local)
 
         super().__init__()
