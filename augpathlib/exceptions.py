@@ -94,3 +94,7 @@ class NoRemoteFileWithThatIdError(AugPathlibError):
 
 class WhyDidntThisGetMovedBeforeError(AugPathlibError):
     """ file should already have been moved ... """
+
+
+class RepoExistsError(AugPathlibError):
+    """ a repository already exists at this path """

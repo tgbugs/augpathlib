@@ -177,7 +177,8 @@ class AugmentedPath(PosixPath):
         else:
             raise TypeError(f'Unknown mode {mode}')
 
-        return os.access(self, mode, follow_symlinks=follow_symlinks)
+        # FIXME pypy3 stuck on 3.5 behavior
+        return os.access(self.as_posix(), mode, follow_symlinks=follow_symlinks)
 
     def commonpath(self, other):
         return self.__class__(os.path.commonpath((self, other)))
@@ -734,7 +735,61 @@ class LocalPath(XattrPath):
 
 
 class RepoPath(PosixPath):
+    _repo_class = Repo
     _repos = {}  # repo cache
+
+    def clone_path(self, remote):
+        """ get the path to which a repo would clone
+            this makes it possible to check for various issues
+            prior to calling init(remote)
+        """
+        name = pathlib.PurePath(remote).stem
+        return self / name
+
+    def clone_from(self, remote):
+        """ clone_from uses the path of the current object as the
+            parent path where a new folder will be created with the remote's name
+
+            NOTE: clone_from always uses the remote's naming convention if you want
+            to clone into a folder with a different name use init(remote) instead
+
+            NOTE: this does not return the new repo it returns the new
+            child path at which the repo is located
+
+            You should probably not use this method since it is poorly designed
+            because it requires error handling in the case where a repository
+            with the name of the remote has already been cloned as a child of
+            the current path
+        """
+        repo_path = self.clone_path(remote)
+        # in a more specific application a variety of tests should go here
+        repo_path.init(remote)
+        return repo_path
+
+    def init(self, remote=None):
+        """ NOTE: init conflates init with clone_from
+            in cases where a path is known before a remote
+
+            No bare option is provided for init since we assume
+            that if you are using this class then you probably
+            want the files in the working tree
+
+            NOTE: this does not protect from creating repos
+            that contain other repos already, only from creating
+            a nested repo inside an existing repo """
+
+        # TODO is_dir() vs is_file()?
+
+        if self.repo is not None:
+            raise exc.RepoExistsError(f'{self.repo}')
+
+        if remote is not None:
+            repo = self._repo_class.clone_from(remote, self)
+        else:
+            repo = self._repo_class.init(self)
+
+        self._repos[self] = repo
+        return repo
 
     @property
     def repo(self):
@@ -742,7 +797,7 @@ class RepoPath(PosixPath):
             return self._repos[self]
 
         elif (self / '.git').exists():  # FIXME kind of a hack
-            repo = Repo(self.as_posix())
+            repo = self._repo_class(self.as_posix())
             self._repos[self] = repo
             return repo
 
@@ -750,7 +805,10 @@ class RepoPath(PosixPath):
             return None
 
         else:
-            return self.parent.repo
+            if not self.is_absolute():
+                return self.absolute().parent.repo
+            else:
+                return self.parent.repo
 
     @property
     def repo_relative_path(self):
@@ -758,6 +816,10 @@ class RepoPath(PosixPath):
         repo = self.repo
         if repo is not None:
             return self.relative_to(repo.working_dir)
+
+    @property
+    def latest_commit(self):
+        return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
 
 
 class XopenPath(PosixPath):
