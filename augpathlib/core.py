@@ -441,7 +441,7 @@ class LocalPath(XattrPath):
 
     def dedupe(self, other, pretend=False):
         return self.cache.dedupe(other.cache, pretend=pretend)
-            
+
     @property
     def id(self):  # FIXME reuse of the name here could be confusing, though it is technically correct
         """ THERE CAN BE ONLY ONE """
@@ -470,7 +470,7 @@ class LocalPath(XattrPath):
 
     @property
     def size(self):
-        """ don't use this to populate meta, but meta computes a checksum 
+        """ don't use this to populate meta, but meta computes a checksum
             so if you need anything less than the checksum don't get meta """
         try:
             st = self.stat()
@@ -611,7 +611,7 @@ class LocalPath(XattrPath):
                 #log.debug(chunk)
                 f.write(chunk)
 
-        if self.cache is not None:  # FIXME cache 
+        if self.cache is not None:  # FIXME cache
             if not self.cache.meta:
                 self.cache.meta = cmeta  # glories of persisting xattrs :/
             # yep sometimes the xattrs get  blasted >_<
@@ -746,7 +746,7 @@ class RepoPath(PosixPath):
         name = pathlib.PurePath(remote).stem
         return self / name
 
-    def clone_from(self, remote):
+    def clone_from(self, remote, *, depth=None):
         """ clone_from uses the path of the current object as the
             parent path where a new folder will be created with the remote's name
 
@@ -763,10 +763,10 @@ class RepoPath(PosixPath):
         """
         repo_path = self.clone_path(remote)
         # in a more specific application a variety of tests should go here
-        repo_path.init(remote)
+        repo_path.init(remote, depth=depth)
         return repo_path
 
-    def init(self, remote=None):
+    def init(self, remote=None, depth=None):
         """ NOTE: init conflates init with clone_from
             in cases where a path is known before a remote
 
@@ -781,10 +781,16 @@ class RepoPath(PosixPath):
         # TODO is_dir() vs is_file()?
 
         if self.repo is not None:
-            raise exc.RepoExistsError(f'{self.repo}')
+            if not self.exists():
+                msg = 'how!? {self!r} != {self.repo.working_dir}'
+                assert self.repo.working_dir == self.as_posix(), msg
+                log.warning(f'stale cache on deleted repo {self!r}')
+                self._repos.pop(self)
+            else:
+                raise exc.RepoExistsError(f'{self.repo}')
 
         if remote is not None:
-            repo = self._repo_class.clone_from(remote, self)
+            repo = self._repo_class.clone_from(remote, self, depth=depth)
         else:
             repo = self._repo_class.init(self)
 
@@ -815,11 +821,110 @@ class RepoPath(PosixPath):
         """ working directory relative path """
         repo = self.repo
         if repo is not None:
-            return self.relative_to(repo.working_dir)
+            if not self.is_absolute():
+                path = self.absolute()
+            else:
+                path = self
+
+            return path.relative_to(repo.working_dir)
 
     @property
     def latest_commit(self):
         return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
+
+    # a variety of change detection
+
+    def modified(self):
+        """ has the filed been changed against index or HEAD """
+        return self._do_diff(self.repo.index, None)
+        #return self.diff()
+
+    def indexed(self):
+        """ cached, or in the index, something like that """
+        return self._do_diff(self.repo.head.commit, self.repo.index)
+        #return self.diff('HEAD', '')
+
+    def has_uncommitted_changes(self):
+        """ indexed or modified aka test working tree against HEAD """
+        return self._do_diff(self.repo.head.commit, None)
+        #return self.diff('HEAD')
+
+    def _do_diff(self, this, other, *, create_patch=False):
+        """ note that the order is inverted from self.diff """
+        if not self.exists():
+            raise FileNotFoundError(f'{self}')
+
+        list_ = this.diff(other=other, paths=self.repo_relative_path.as_posix(), create_patch=create_patch)
+        if list_:
+            return list_[0]
+
+    def diff(self, ref='', ref_orig=None, create_patch=False):
+        """ ref can be HEAD, branch, commit hash, etc.
+
+            default behaviors diffs the working tree against the index or HEAD if no index
+
+            if ref = None, diff against the working tree
+            if ref = '',   diff against the index
+
+            if ref_orig = None, diff from the working tree
+            if ref_orig = '',   diff from the index
+        """
+
+        def ref_to_object(ref_):
+            if ref_ is None:
+                return None
+            elif ref_ == '':
+                return self.repo.index
+            else:
+                return self.repo.commit(ref_)
+
+        this = ref_to_object(ref_orig)
+        other = ref_to_object(ref)
+
+        if this is None:
+            if other is None:
+                return  # FIXME align return type
+            else:
+                this, other = other, this
+
+        diff = self._do_diff(this, other, create_patch=create_patch)
+        # TODO None -> '' I think?
+        # TODO do we render this here or as an extension to the diff?
+        return diff
+
+    # commit this file
+
+    def add_index(self):
+        """ git add -- {self} """
+        self.repo.index.add([self.as_posix()])
+
+    def commit(self, message, *, date=None):
+        """ commit from index
+            git commit -m {message} --date {date} -- {self}
+        """
+        raise NotImplementedError()
+        # TODO
+        # use a modified Index.write_tree create an in memory tree
+        # filtering out changed files that are not the current file
+        # during the call to mdb.stream_copy, though it seems like
+        # the internal call to write_tree_from_cache may be writing
+        # all changes and calculating the sha from that so it may
+        # make more sense to try to filter entries instead ...
+        # but that means a blob may still be sitting there and
+        # get incorporated? I may have to use the full list of entries
+        # but sneekily swap out the entries for other changed files for
+        # the unmodified entry for their object, will need to experiment
+        commit = self.repo.index.commit
+        breakpoint()
+        return commit
+
+    def commit_from_working_tree(self, message, *, date=None):
+        """ commit from working tree by automatically adding to index
+            git add -- {self}
+            git commit -m {message} --date {date} -- {self}
+        """
+        self.index()
+        return self.commit(message, date=date)
 
 
 class XopenPath(PosixPath):
