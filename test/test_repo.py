@@ -1,4 +1,5 @@
 import os
+import pathlib
 import unittest
 from augpathlib import RepoPath, LocalPath
 import pytest
@@ -8,6 +9,11 @@ testing_base = RepoPath(f'/tmp/.augpathlib-testing-base-{os.getpid()}')
 
 class HybridPath(RepoPath, LocalPath):
     """ Combined functionality """
+
+
+class HWP(HybridPath, pathlib.WindowsPath): pass
+class HPP(HybridPath, pathlib.PosixPath): pass
+HybridPath._bind_flavours()
 
 
 class TestRepoPath(unittest.TestCase):
@@ -68,3 +74,9 @@ class TestComplex(unittest.TestCase):
         self.test_commit()
         d = self.test_file.diff('HEAD', 'HEAD~1')
         assert d, f'd'
+
+    def test_working_dir(self):
+        [RepoPath._repos.pop(k) for k in list(RepoPath._repos)]
+        rp = RepoPath(str(self.test_file))
+        assert rp.working_dir is not None, f'wat {rp}'
+        assert rp.repo is not None, f'wat {rp} {rp.working_dir}'

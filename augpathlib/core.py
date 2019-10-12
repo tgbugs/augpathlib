@@ -155,8 +155,9 @@ class RepoHelper:
         if wd in self._repos:
             return self._repos[wd]
         elif wd is not None:
-            repo = self._repo_class(self.as_posix())
-            self._repos[self] = repo
+            repo = self._repo_class(wd.as_posix())
+            self._repos[wd] = repo
+            return repo
 
     @property
     def working_dir(self):
@@ -165,7 +166,11 @@ class RepoHelper:
         # https://github.com/git/git/blob/08da6496b61341ec45eac36afcc8f94242763468/setup.c#L584
         # https://github.com/git/git/blob/bc12974a897308fd3254cf0cc90319078fe45eea/setup.c#L300
         if (self / '.git').exists():
-            return self
+            if not self.is_absolute():
+                # avoid cases where RepoPath('.') gets put in the repos cache
+                return self.absolute()
+            else:
+                return self
 
         elif str(self) == self.anchor:  # anchor is portable
             return None
