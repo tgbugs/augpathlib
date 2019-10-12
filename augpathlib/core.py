@@ -131,15 +131,19 @@ class RepoHelper:
             a nested repo inside an existing repo """
 
         # TODO is_dir() vs is_file()?
+        try:
+            repo = self.repo
+        except exc.NotInRepoError:
+            repo = None
 
-        if self.repo is not None:
+        if repo is not None:
             if not self.exists():
-                msg = 'how!? {self!r} != {self.repo.working_dir}'
-                assert self.repo.working_dir == self.as_posix(), msg
+                msg = 'how!? {self!r} != {repo.working_dir}'
+                assert repo.working_dir == self.as_posix(), msg
                 log.warning(f'stale cache on deleted repo {self!r}')
                 self._repos.pop(self)
             else:
-                raise exc.RepoExistsError(f'{self.repo}')
+                raise exc.RepoExistsError(f'{repo}')
 
         if remote is not None:
             repo = self._repo_class.clone_from(remote, self, depth=depth)
