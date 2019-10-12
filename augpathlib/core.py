@@ -15,8 +15,10 @@ except ImportError:
 
 if os.name != 'nt':
     import xattr
+    XATTR_DEFAULT_NS = xattr.NS_USER
 else:
     from augpathlib import pyads
+    XATTR_DEFAULT_NS = None  # should not need these on an nt system
 
 #import psutil  # import for experimental xopen functionality
 from git import Repo
@@ -306,7 +308,7 @@ class AlternateDataStreamsHelper:
 class XattrHelper:
     """ pathlib helper augmented with xattr support """
 
-    def setxattr(self, key, value, namespace=xattr.NS_USER):
+    def setxattr(self, key, value, namespace=XATTR_DEFAULT_NS):
         if not isinstance(value, bytes):  # checksums
             raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
         else:
@@ -314,15 +316,15 @@ class XattrHelper:
 
         xattr.set(self.as_posix(), key, bytes_value, namespace=namespace)
 
-    def setxattrs(self, xattr_dict, namespace=xattr.NS_USER):
+    def setxattrs(self, xattr_dict, namespace=XATTR_DEFAULT_NS):
         for k, v in xattr_dict.items():
             self.setxattr(k, v, namespace=namespace)
 
-    def getxattr(self, key, namespace=xattr.NS_USER):
+    def getxattr(self, key, namespace=XATTR_DEFAULT_NS):
         # we don't deal with types here, we just act as a dumb store
         return xattr.get(self.as_posix(), key, namespace=namespace)
 
-    def xattrs(self, namespace=xattr.NS_USER):
+    def xattrs(self, namespace=XATTR_DEFAULT_NS):
         # decode keys later
         try:
             return {k:v for k, v in xattr.get_all(self.as_posix(), namespace=namespace)}
