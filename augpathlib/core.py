@@ -626,6 +626,9 @@ class LocalPath(AugmentedPath):
             except exc.NoCachedMetadataError as e:
                 #log.error(e)
                 return None
+            except TypeError as e:
+                if self._cache_class is None:
+                    return None
 
         return self._cache
 

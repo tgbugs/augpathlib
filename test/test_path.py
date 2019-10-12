@@ -1,6 +1,6 @@
 import unittest
 from pathlib import PurePosixPath
-from augpathlib import AugmentedPath
+from augpathlib import AugmentedPath, LocalPath
 from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
 from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
@@ -138,3 +138,17 @@ class TestUpdateMeta(unittest.TestCase):
         changed, merged = PrimaryCache._update_meta(old, new)
         test_value = PathMeta(id='0', size=10, file_id=1, checksum='asdf')
         assert merged == test_value, test_value.as_pretty_diff(merged)
+
+
+class TestActuallyLocalPath(unittest.TestCase):
+    def setUp(self):
+        LocalPath
+
+    def tearDown(self):
+        LocalPath
+
+    def test_no_cache_class(self):
+        lp = LocalPath(__file__)
+        p = lp.parent
+        rc = list(p.rchildren)
+        assert rc, 'hrm'
