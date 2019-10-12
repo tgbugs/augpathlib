@@ -16,8 +16,9 @@ __version__ = find_version('augpathlib/__init__.py')
 with open('README.md', 'rt') as f:
     long_description = f.read()
 
+platform_dependent_require = []
 if os.name != 'nt':
-    platform_dependent_require = ['pyxattr']
+    platform_dependent_require += ['pyxattr']
 
 tests_require = ['pytest', 'pytest-runner']
 setup(
