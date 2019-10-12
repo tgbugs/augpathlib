@@ -1,3 +1,4 @@
+import os
 import re
 from setuptools import setup
 
@@ -14,6 +15,9 @@ __version__ = find_version('augpathlib/__init__.py')
 
 with open('README.md', 'rt') as f:
     long_description = f.read()
+
+if os.name != 'nt':
+    platform_dependent_require = ['pyxattr']
 
 tests_require = ['pytest', 'pytest-runner']
 setup(
@@ -36,13 +40,12 @@ setup(
     packages=['augpathlib'],
     python_requires='>=3.6',
     tests_require=tests_require,
-    install_requires=[
+    install_requires=platform_dependent_require + [
         'gitpython',
         'pexpect>=4.7.0',
         #'psutil',
         'python-dateutil',
         'python-magic',  # FIXME conflicts with sys-apps/file python bindings
-        'pyxattr',
         'terminaltables',
         #'Xlib',
     ],

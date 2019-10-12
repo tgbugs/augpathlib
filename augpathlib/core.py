@@ -13,7 +13,11 @@ try:
 except ImportError:
     pass
 
-import xattr
+if os.name != 'nt':
+    import xattr
+else:
+    from augpathlib import pyads
+
 #import psutil  # import for experimental xopen functionality
 from git import Repo
 from dateutil import parser
