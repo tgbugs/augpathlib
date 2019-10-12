@@ -62,7 +62,9 @@ def sysidpath(ignore_options=False, path_class=Path):
 
 
 def machine_guid(ignore_options=False, path_class=Path):
-    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "", 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                         "SOFTWARE\\Microsoft\\Cryptography", 0,
+                         winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
     guid, status = winreg.QueryValueEx(key, 'MachineGuid')
     return guid
 
