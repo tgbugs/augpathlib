@@ -1,12 +1,15 @@
 import os
 import atexit
 import subprocess
-from pexpect import pxssh
 from pathlib import PurePosixPath, PurePath
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib import caches, LocalPath
 from augpathlib.utils import _bind_sysid_, StatResult, cypher_command_lookup
+if os.name != 'nt':
+    # pexpect on windows does not support pxssh
+    # because it is missing spawn
+    from pexpect import pxssh
 
 
 class RemotePath:
