@@ -34,6 +34,7 @@ def sysidpath(ignore_options=False, path_class=Path):
     # in the event we have to make our own
     # this should not be passed in a as a parameter
     # since we need these definitions to be more or less static
+
     failover = path_class('/var/tmp/machine-id')  # /var/tmp is more persistent than /tmp/
 
     if hasattr(path_class, 'access'):
@@ -60,11 +61,35 @@ def sysidpath(ignore_options=False, path_class=Path):
     return failover
 
 
+def machine_guid(ignore_options=False, path_class=Path):
+    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "", 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+    guid, status = winreg.QueryValueEx(key, 'MachineGuid')
+    return guid
+
+
+if os.name == 'nt':
+    import winreg
+    def _raw_id(cls, cypher=default_cypher):
+        if ((hasattr(cls, '_cache_class') and
+             hasattr(cls._cache_class, 'cypher') and
+             cls._cache_class.cypher != cypher)):  # FIXME this could be static ...
+            cypher = cls._cache_class.cypher
+
+        chunk = machine_guid().encode()
+        m = cypher()
+        m.update(chunk)
+        return m.digest()
+
+else:
+    from uuid import uuid4
+    def _raw_id(cls):
+        return cls(sysidpath(path_class=cls)).checksum()[:16]
+
+
 def _bind_sysid_(cls):
     if cls.sysid is None:
         cls.sysid = (base64
-                     .urlsafe_b64encode(cls(sysidpath(path_class=cls))
-                                        .checksum()[:16])[:-2]
+                     .urlsafe_b64encode(_raw_id(cls))[:-2]
                      .decode())
     else:
         raise ValueError(f'{cls} already has sysid {cls.sysid}')
