@@ -158,6 +158,8 @@ class RepoHelper:
             repo = self._repo_class(wd.as_posix())
             self._repos[wd] = repo
             return repo
+        else:
+            raise exc.NotInRepoError(f'{self} is not in a git repository')
 
     @property
     def working_dir(self):

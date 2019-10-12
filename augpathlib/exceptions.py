@@ -98,3 +98,8 @@ class WhyDidntThisGetMovedBeforeError(AugPathlibError):
 
 class RepoExistsError(AugPathlibError):
     """ a repository already exists at this path """
+
+
+class NotInRepoError(AugPathlibError):
+    """ a repository does not exist in this
+        or any of the parents of this path """
