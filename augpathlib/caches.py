@@ -1,13 +1,14 @@
-from pathlib import PurePosixPath
+import pathlib
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
-from augpathlib.core import AugmentedPath, XattrPath
+from augpathlib.core import AugmentedPath, AugmentedWindowsPath,AugmentedPosixPath, XattrHelper
 from augpathlib.utils import log, LOCAL_DATA_DIR, default_cypher
 from augpathlib import remotes
 
 
 class CachePath(AugmentedPath):
     # CachePaths this needs to be a real path so that it can navigate the local path sturcture
+    # FIXME Not sure I believe that, given the tradeoff
     """ Local data about remote objects.
         This is where the mapping between the local id (aka path)
         and the remote id lives. In a git-like world this is the
@@ -45,10 +46,24 @@ class CachePath(AugmentedPath):
         local_class._cache_class = cls
         remote_class_factory._cache_class = cls
 
+        # a nice side effect of weighing anchor here is that it
+        # enforces order of operations for setup then init etc.
+        if hasattr(cls, '_anchor'):
+            cls.weighAnchor()
+
+    @classmethod
+    def weighAnchor(cls):
+        # FIXME should this return the old anchor?
+        acls = cls._abstract_class()
+        if hasattr(acls, '_anchor'):
+            delattr(acls, '_anchor')
+        else:
+            raise ValueError(f'{self.__class__} not anchored')
+
     def anchorClassHere(self):
         """ Use this to initialize the class level anchor from an instance. """
         if not hasattr(self.__class__, '_anchor'):
-            self.__class__._anchor = self
+            self.__class__._abstract_class()._anchor = self
         else:
             raise ValueError(f'{self.__class__} already anchored to {self.__class__._anchor}')
 
@@ -717,6 +732,11 @@ class CachePath(AugmentedPath):
         return self.__class__.__name__ + ' <' + local + ' -> ' + remote + '>'
 
 
+class CacheWindowsPath(CachePath, pathlib.WindowsPath): pass
+class CachePosixPath(CachePath, pathlib.PosixPath): pass
+CachePath._bind_flavours()
+
+
 class ReflectiveCache(CachePath):
     """ Oh, it's me. """
 
@@ -725,7 +745,12 @@ class ReflectiveCache(CachePath):
         return self.local.meta
 
 
-class XattrCache(CachePath, XattrPath):
+class ReflectiveWindowsCache(ReflectiveCache, pathlib.WindowsPath): pass
+class ReflectivePosixCache(ReflectiveCache, pathlib.PosixPath): pass
+ReflectiveCache._bind_flavours()
+
+
+class XattrCache(XattrHelper, CachePath):
     xattr_prefix = None
 
     @property
@@ -759,6 +784,12 @@ class XattrCache(CachePath, XattrPath):
             super()._meta_setter(pathmeta, memory_only=memory_only)
 
 
+
+class XattrWindowsCache(XattrCache, pathlib.WindowsPath): pass
+class XattrPosixCache(XattrCache, pathlib.PosixPath): pass
+XattrCache._bind_flavours()
+
+
 class SqliteCache(CachePath):
     """ a persistent store to back up the xattrs if they get wiped """
 
@@ -779,6 +810,11 @@ class SqliteCache(CachePath):
         #log.error('SqliteCache setter not implemented yet. Should probably be done in bulk anyway ...')
 
 
+class SqliteWindowsCache(SqliteCache, pathlib.WindowsPath): pass
+class SqlitePosixCache(SqliteCache, pathlib.PosixPath): pass
+SqliteCache._bind_flavours()
+
+
 class SymlinkCache(CachePath):
 
     def __init__(self, *args, meta=None, **kwargs):
@@ -792,7 +828,7 @@ class SymlinkCache(CachePath):
 
         if self.is_symlink():
             if not self.exists():  # if a symlink exists it is something other than what we want
-                #assert PurePosixPath(self.name) == self.readlink().parent.parent
+                #assert pathlib.PurePosixPath(self.name) == self.readlink().parent.parent
                 return PathMeta.from_symlink(self)
             else:
                 raise exc.PathExistsError(f'Target of symlink exists!\n{self} -> {self.resolve()}')
@@ -863,12 +899,17 @@ class SymlinkCache(CachePath):
 
             # FIXME if an id starts with / then the local name is overwritten due to pathlib logic
             # we need to error if that happens
-            #symlink = PurePosixPath(self.local.name, pathmeta.as_symlink().as_posix().strip('/'))
-            symlink = PurePosixPath(self.local.name) / pathmeta.as_symlink()
+            #symlink = pathlib.PurePosixPath(self.local.name, pathmeta.as_symlink().as_posix().strip('/'))
+            symlink = pathlib.PurePosixPath(self.local.name) / pathmeta.as_symlink()
             self.local.symlink_to(symlink)
 
         else:
             raise exc.PathExistsError(f'Path exists {self}')
+
+
+class SymlinkWindowsCache(SymlinkCache, pathlib.WindowsPath): pass
+class SymlinkPosixCache(SymlinkCache, pathlib.PosixPath): pass
+SymlinkCache._bind_flavours()
 
 
 class PrimaryCache(CachePath):
@@ -1047,6 +1088,11 @@ class PrimaryCache(CachePath):
         # if package/file
 
 
+class PrimaryWindowsCache(PrimaryCache, pathlib.WindowsPath): pass
+class PrimaryPosixCache(PrimaryCache, pathlib.PosixPath): pass
+PrimaryCache._bind_flavours()
+
+
 class SshCache(PrimaryCache, XattrCache):
     xattr_prefix = 'ssh'
     _backup_cache = SqliteCache
@@ -1065,6 +1111,11 @@ class SshCache(PrimaryCache, XattrCache):
     def data(self):
         # there is no middle man for ssh so we go directly
         yield from self.remote.data
+
+
+class SshWindowsCache(SshCache, pathlib.WindowsPath): pass
+class SshPosixCache(SshCache, pathlib.PosixPath): pass
+SshCache._bind_flavours()
 
 
 # assign defaults

@@ -5,7 +5,6 @@ import mimetypes
 import subprocess
 from time import sleep
 from errno import ELOOP, ENOENT, ENOTDIR, EBADF
-from pathlib import PosixPath, PurePosixPath
 from datetime import datetime, timezone
 from functools import wraps
 from itertools import chain
@@ -78,6 +77,254 @@ def _catch_wrapper(func):
 
 #pathlib._NormalAccessor.stat = _catch_wrapper(os.stat)  # can't wrap stat, pathlib needs the errors
 
+# pathlib helpers, simplify the inheritance nightmare ...
+
+
+class RepoHelper:
+    _repo_class = Repo
+    _repos = {}  # repo cache
+
+    def clone_path(self, remote):
+        """ get the path to which a repo would clone
+            this makes it possible to check for various issues
+            prior to calling init(remote)
+        """
+        name = pathlib.PurePath(remote).stem
+        return self / name
+
+    def clone_from(self, remote, *, depth=None):
+        """ clone_from uses the path of the current object as the
+            parent path where a new folder will be created with the remote's name
+
+            NOTE: clone_from always uses the remote's naming convention if you want
+            to clone into a folder with a different name use init(remote) instead
+
+            NOTE: this does not return the new repo it returns the new
+            child path at which the repo is located
+
+            You should probably not use this method since it is poorly designed
+            because it requires error handling in the case where a repository
+            with the name of the remote has already been cloned as a child of
+            the current path
+        """
+        repo_path = self.clone_path(remote)
+        # in a more specific application a variety of tests should go here
+        repo_path.init(remote, depth=depth)
+        return repo_path
+
+    def init(self, remote=None, depth=None):
+        """ NOTE: init conflates init with clone_from
+            in cases where a path is known before a remote
+
+            No bare option is provided for init since we assume
+            that if you are using this class then you probably
+            want the files in the working tree
+
+            NOTE: this does not protect from creating repos
+            that contain other repos already, only from creating
+            a nested repo inside an existing repo """
+
+        # TODO is_dir() vs is_file()?
+
+        if self.repo is not None:
+            if not self.exists():
+                msg = 'how!? {self!r} != {self.repo.working_dir}'
+                assert self.repo.working_dir == self.as_posix(), msg
+                log.warning(f'stale cache on deleted repo {self!r}')
+                self._repos.pop(self)
+            else:
+                raise exc.RepoExistsError(f'{self.repo}')
+
+        if remote is not None:
+            repo = self._repo_class.clone_from(remote, self, depth=depth)
+        else:
+            repo = self._repo_class.init(self)
+
+        self._repos[self] = repo
+        return repo
+
+    @property
+    def repo(self):
+        wd = self.working_dir
+        if wd in self._repos:
+            return self._repos[wd]
+        elif wd is not None:
+            repo = self._repo_class(self.as_posix())
+            self._repos[self] = repo
+
+    @property
+    def working_dir(self):
+        # TODO match git behavior here
+        # https://github.com/git/git/blob/master/setup.c#L903
+        # https://github.com/git/git/blob/08da6496b61341ec45eac36afcc8f94242763468/setup.c#L584
+        # https://github.com/git/git/blob/bc12974a897308fd3254cf0cc90319078fe45eea/setup.c#L300
+        if (self / '.git').exists():
+            return self
+
+        elif str(self) == self.anchor:  # anchor is portable
+            return None
+
+        else:
+            if not self.is_absolute():
+                return self.absolute().parent.working_dir
+            else:
+                return self.parent.working_dir
+
+    @property
+    def repo_relative_path(self):
+        """ working directory relative path """
+        repo = self.repo
+        if repo is not None:
+            if not self.is_absolute():
+                path = self.absolute()
+            else:
+                path = self
+
+            return path.relative_to(repo.working_dir)
+
+    @property
+    def latest_commit(self):
+        return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
+
+    # a variety of change detection
+
+    def modified(self):
+        """ has the filed been changed against index or HEAD """
+        return self._do_diff(self.repo.index, None)
+        #return self.diff()
+
+    def indexed(self):
+        """ cached, or in the index, something like that """
+        return self._do_diff(self.repo.head.commit, self.repo.index)
+        #return self.diff('HEAD', '')
+
+    def has_uncommitted_changes(self):
+        """ indexed or modified aka test working tree against HEAD """
+        return self._do_diff(self.repo.head.commit, None)
+        #return self.diff('HEAD')
+
+    def _do_diff(self, this, other, *, create_patch=False):
+        """ note that the order is inverted from self.diff """
+        if not self.exists():
+            raise FileNotFoundError(f'{self}')
+
+        list_ = this.diff(other=other, paths=self.repo_relative_path.as_posix(), create_patch=create_patch)
+        if list_:
+            return list_[0]
+
+    def diff(self, ref='', ref_orig=None, create_patch=False):
+        """ ref can be HEAD, branch, commit hash, etc.
+
+            default behaviors diffs the working tree against the index or HEAD if no index
+
+            if ref = None, diff against the working tree
+            if ref = '',   diff against the index
+
+            if ref_orig = None, diff from the working tree
+            if ref_orig = '',   diff from the index
+        """
+
+        def ref_to_object(ref_):
+            if ref_ is None:
+                return None
+            elif ref_ == '':
+                return self.repo.index
+            else:
+                return self.repo.commit(ref_)
+
+        this = ref_to_object(ref_orig)
+        other = ref_to_object(ref)
+
+        if this is None:
+            if other is None:
+                return  # FIXME align return type
+            else:
+                this, other = other, this
+
+        diff = self._do_diff(this, other, create_patch=create_patch)
+        # TODO None -> '' I think?
+        # TODO do we render this here or as an extension to the diff?
+        return diff
+
+    # commit this file
+
+    def add_index(self):
+        """ git add -- {self} """
+        self.repo.index.add([self.as_posix()])
+
+    def commit(self, message, *, date=None):
+        """ commit from index
+            git commit -m {message} --date {date} -- {self}
+        """
+        raise NotImplementedError()
+        # TODO
+        # use a modified Index.write_tree create an in memory tree
+        # filtering out changed files that are not the current file
+        # during the call to mdb.stream_copy, though it seems like
+        # the internal call to write_tree_from_cache may be writing
+        # all changes and calculating the sha from that so it may
+        # make more sense to try to filter entries instead ...
+        # but that means a blob may still be sitting there and
+        # get incorporated? I may have to use the full list of entries
+        # but sneekily swap out the entries for other changed files for
+        # the unmodified entry for their object, will need to experiment
+        commit = self.repo.index.commit
+        breakpoint()
+        return commit
+
+    def commit_from_working_tree(self, message, *, date=None):
+        """ commit from working tree by automatically adding to index
+            git add -- {self}
+            git commit -m {message} --date {date} -- {self}
+        """
+        self.index()
+        return self.commit(message, date=date)
+
+
+class AlternateDataStreamsHelper:
+    """ pathlib helper augmented with NTFS ADS """
+
+    def setxattr(self, key, value):
+        raise NotImplementedError('this will be the compatibility api layer when finished')
+
+    def setxattrs(self, xattr_dict):
+        raise NotImplementedError('this will be the compatibility api layer when finished')
+
+    def getxattr(self, key):
+        raise NotImplementedError('this will be the compatibility api layer when finished')
+
+    def xattrs(self):
+        raise NotImplementedError('this will be the compatibility api layer when finished')
+
+    # TODO actual ADS implementation for windows
+
+
+class XattrHelper:
+    """ pathlib helper augmented with xattr support """
+
+    def setxattr(self, key, value, namespace=xattr.NS_USER):
+        if not isinstance(value, bytes):  # checksums
+            raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
+        else:
+            bytes_value = value
+
+        xattr.set(self.as_posix(), key, bytes_value, namespace=namespace)
+
+    def setxattrs(self, xattr_dict, namespace=xattr.NS_USER):
+        for k, v in xattr_dict.items():
+            self.setxattr(k, v, namespace=namespace)
+
+    def getxattr(self, key, namespace=xattr.NS_USER):
+        # we don't deal with types here, we just act as a dumb store
+        return xattr.get(self.as_posix(), key, namespace=namespace)
+
+    def xattrs(self, namespace=xattr.NS_USER):
+        # decode keys later
+        try:
+            return {k:v for k, v in xattr.get_all(self.as_posix(), namespace=namespace)}
+        except FileNotFoundError as e:
+            raise FileNotFoundError(self) from e
+
 
 # remote data about remote objects -> remote_meta
 # local data about remote objects -> cache_meta
@@ -90,12 +337,38 @@ def _catch_wrapper(func):
 # needed a place to live ...
 
 
-class AugmentedPath(PosixPath):
+class AugmentedPath(pathlib.Path):
     """ extra conveniences, mostly things that are fixed in 3.7 using IGNORE_ERROS """
 
     _stack = []  # pushd and popd
     count = 0
     _debug = False  # sigh
+
+
+    @classmethod
+    def _bind_flavours(cls):
+        cls.__abstractpath = cls
+        for subcls in cls.__subclasses__():  # direct only
+            if subcls._flavour is pathlib._posix_flavour:
+                cls.__posixpath = subcls
+            elif subcls._flavour is pathlib._windows_flavour:
+                cls.__windowspath = subcls
+            else:
+                raise TypeError(f'unknown flavour for {cls} {cls._flavour}')
+
+    @classmethod
+    def _abstract_class(cls):
+        return cls.__abstractpath
+
+    def __new__(cls, *args, **kwargs):
+        if cls is cls.__abstractpath:
+            cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
+        self = cls._from_parts(args, init=False)
+        if not self._flavour.is_supported:
+            raise NotImplementedError("cannot instantiate %r on your system"
+                                      % (cls.__name__,))
+        self._init()
+        return self
 
     def exists(self):
         """ Turns out that python doesn't know how to stat symlinks that point
@@ -162,7 +435,7 @@ class AugmentedPath(PosixPath):
             link = link.decode()
 
         #log.debug(link)
-        return PurePosixPath(link)
+        return pathlib.PurePosixPath(link)
 
     def access(self, mode='read', follow_symlinks=True):
         """ types are 'read', 'write', and 'execute' """
@@ -308,34 +581,12 @@ class AugmentedPath(PosixPath):
             return m.digest()
 
 
-class XattrPath(AugmentedPath):
-    """ pathlib Path augmented with xattr support """
-
-    def setxattr(self, key, value, namespace=xattr.NS_USER):
-        if not isinstance(value, bytes):  # checksums
-            raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
-        else:
-            bytes_value = value
-
-        xattr.set(self.as_posix(), key, bytes_value, namespace=namespace)
-
-    def setxattrs(self, xattr_dict, namespace=xattr.NS_USER):
-        for k, v in xattr_dict.items():
-            self.setxattr(k, v, namespace=namespace)
-
-    def getxattr(self, key, namespace=xattr.NS_USER):
-        # we don't deal with types here, we just act as a dumb store
-        return xattr.get(self.as_posix(), key, namespace=namespace)
-
-    def xattrs(self, namespace=xattr.NS_USER):
-        # decode keys later
-        try:
-            return {k:v for k, v in xattr.get_all(self.as_posix(), namespace=namespace)}
-        except FileNotFoundError as e:
-            raise FileNotFoundError(self) from e
+class AugmentedWindowsPath(AugmentedPath, pathlib.WindowsPath): pass
+class AugmentedPosixPath(AugmentedPath, pathlib.PosixPath): pass
+AugmentedPath._bind_flavours()
 
 
-class LocalPath(XattrPath):
+class LocalPath(AugmentedPath):
     # local data about remote objects
 
     chunksize = 4096  # make the data generator chunksize visible externally
@@ -734,208 +985,42 @@ class LocalPath(XattrPath):
         return
 
 
-class RepoPath(PosixPath):
-    _repo_class = Repo
-    _repos = {}  # repo cache
-
-    def clone_path(self, remote):
-        """ get the path to which a repo would clone
-            this makes it possible to check for various issues
-            prior to calling init(remote)
-        """
-        name = pathlib.PurePath(remote).stem
-        return self / name
-
-    def clone_from(self, remote, *, depth=None):
-        """ clone_from uses the path of the current object as the
-            parent path where a new folder will be created with the remote's name
-
-            NOTE: clone_from always uses the remote's naming convention if you want
-            to clone into a folder with a different name use init(remote) instead
-
-            NOTE: this does not return the new repo it returns the new
-            child path at which the repo is located
-
-            You should probably not use this method since it is poorly designed
-            because it requires error handling in the case where a repository
-            with the name of the remote has already been cloned as a child of
-            the current path
-        """
-        repo_path = self.clone_path(remote)
-        # in a more specific application a variety of tests should go here
-        repo_path.init(remote, depth=depth)
-        return repo_path
-
-    def init(self, remote=None, depth=None):
-        """ NOTE: init conflates init with clone_from
-            in cases where a path is known before a remote
-
-            No bare option is provided for init since we assume
-            that if you are using this class then you probably
-            want the files in the working tree
-
-            NOTE: this does not protect from creating repos
-            that contain other repos already, only from creating
-            a nested repo inside an existing repo """
-
-        # TODO is_dir() vs is_file()?
-
-        if self.repo is not None:
-            if not self.exists():
-                msg = 'how!? {self!r} != {self.repo.working_dir}'
-                assert self.repo.working_dir == self.as_posix(), msg
-                log.warning(f'stale cache on deleted repo {self!r}')
-                self._repos.pop(self)
-            else:
-                raise exc.RepoExistsError(f'{self.repo}')
-
-        if remote is not None:
-            repo = self._repo_class.clone_from(remote, self, depth=depth)
-        else:
-            repo = self._repo_class.init(self)
-
-        self._repos[self] = repo
-        return repo
-
-    @property
-    def repo(self):
-        if self in self._repos:
-            return self._repos[self]
-
-        elif (self / '.git').exists():  # FIXME kind of a hack
-            repo = self._repo_class(self.as_posix())
-            self._repos[self] = repo
-            return repo
-
-        elif str(self) == '/':  # FIXME windows ...
-            return None
-
-        else:
-            if not self.is_absolute():
-                return self.absolute().parent.repo
-            else:
-                return self.parent.repo
-
-    @property
-    def repo_relative_path(self):
-        """ working directory relative path """
-        repo = self.repo
-        if repo is not None:
-            if not self.is_absolute():
-                path = self.absolute()
-            else:
-                path = self
-
-            return path.relative_to(repo.working_dir)
-
-    @property
-    def latest_commit(self):
-        return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
-
-    # a variety of change detection
-
-    def modified(self):
-        """ has the filed been changed against index or HEAD """
-        return self._do_diff(self.repo.index, None)
-        #return self.diff()
-
-    def indexed(self):
-        """ cached, or in the index, something like that """
-        return self._do_diff(self.repo.head.commit, self.repo.index)
-        #return self.diff('HEAD', '')
-
-    def has_uncommitted_changes(self):
-        """ indexed or modified aka test working tree against HEAD """
-        return self._do_diff(self.repo.head.commit, None)
-        #return self.diff('HEAD')
-
-    def _do_diff(self, this, other, *, create_patch=False):
-        """ note that the order is inverted from self.diff """
-        if not self.exists():
-            raise FileNotFoundError(f'{self}')
-
-        list_ = this.diff(other=other, paths=self.repo_relative_path.as_posix(), create_patch=create_patch)
-        if list_:
-            return list_[0]
-
-    def diff(self, ref='', ref_orig=None, create_patch=False):
-        """ ref can be HEAD, branch, commit hash, etc.
-
-            default behaviors diffs the working tree against the index or HEAD if no index
-
-            if ref = None, diff against the working tree
-            if ref = '',   diff against the index
-
-            if ref_orig = None, diff from the working tree
-            if ref_orig = '',   diff from the index
-        """
-
-        def ref_to_object(ref_):
-            if ref_ is None:
-                return None
-            elif ref_ == '':
-                return self.repo.index
-            else:
-                return self.repo.commit(ref_)
-
-        this = ref_to_object(ref_orig)
-        other = ref_to_object(ref)
-
-        if this is None:
-            if other is None:
-                return  # FIXME align return type
-            else:
-                this, other = other, this
-
-        diff = self._do_diff(this, other, create_patch=create_patch)
-        # TODO None -> '' I think?
-        # TODO do we render this here or as an extension to the diff?
-        return diff
-
-    # commit this file
-
-    def add_index(self):
-        """ git add -- {self} """
-        self.repo.index.add([self.as_posix()])
-
-    def commit(self, message, *, date=None):
-        """ commit from index
-            git commit -m {message} --date {date} -- {self}
-        """
-        raise NotImplementedError()
-        # TODO
-        # use a modified Index.write_tree create an in memory tree
-        # filtering out changed files that are not the current file
-        # during the call to mdb.stream_copy, though it seems like
-        # the internal call to write_tree_from_cache may be writing
-        # all changes and calculating the sha from that so it may
-        # make more sense to try to filter entries instead ...
-        # but that means a blob may still be sitting there and
-        # get incorporated? I may have to use the full list of entries
-        # but sneekily swap out the entries for other changed files for
-        # the unmodified entry for their object, will need to experiment
-        commit = self.repo.index.commit
-        breakpoint()
-        return commit
-
-    def commit_from_working_tree(self, message, *, date=None):
-        """ commit from working tree by automatically adding to index
-            git add -- {self}
-            git commit -m {message} --date {date} -- {self}
-        """
-        self.index()
-        return self.commit(message, date=date)
+class LocalWindowsPath(AlternateDataStreamsHelper, LocalPath, pathlib.WindowsPath): pass
+class LocalPosixPath(XattrHelper, LocalPath, pathlib.PosixPath): pass
+LocalPath._bind_flavours()
 
 
-class XopenPath(PosixPath):
+class RepoPath(RepoHelper, AugmentedPath): pass
+class RepoWindowsPath(RepoPath, pathlib.WindowsPath): pass
+class RepoPosixPath(RepoPath, pathlib.PosixPath): pass
+RepoPath._bind_flavours()
+
+
+class XopenPath(AugmentedPath):
+    pass
+
+
+class XopenWindowsPath(XopenPath, pathlib.WindowsPath):
+    _command = 'start'
+
+    def xopen(self):
+        """ open file using start """
+        process = subprocess.Popen([self._command, self],
+                                   stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.STDOUT)
+
+
+class XopenPosixPath(XopenPath, pathlib.PosixPath):
+    _command = 'open' if sys.platform == 'darwin' else 'xdg-open'
 
     def xopen(self):
         """ open file using xdg-open """
-        process = subprocess.Popen(['xdg-open', self.as_posix()],
+        process = subprocess.Popen([self._command, self.as_posix()],
                                    stdout=subprocess.DEVNULL,
                                    stderr=subprocess.STDOUT)
 
         return  # FIXME this doesn't seem to update anything beyond python??
+
         pid = process.pid
         proc = psutil.Process(pid)
         process_window = None
@@ -979,6 +1064,10 @@ class XopenPath(PosixPath):
             else:
                 sleep(.01)  # spin a bit more slowly
 
+
+class XopenWindowsPath(XopenPath, pathlib.WindowsPath): pass
+class XopenPosixPath(XopenPath, pathlib.PosixPath): pass
+XopenPath._bind_flavours()
 
 # any additional values
 LocalPath._bind_sysid()

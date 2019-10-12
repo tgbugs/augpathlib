@@ -1,9 +1,19 @@
 from augpathlib.meta import PathMeta
 from augpathlib.core import (AugmentedPath,
-                             XattrPath,
+                             AugmentedPosixPath,
+                             AugmentedWindowsPath,
                              RepoPath,
+                             RepoPosixPath,
+                             RepoWindowsPath,
                              XopenPath,
-                             LocalPath)
+                             XopenPosixPath,
+                             XopenWindowsPath,
+                             LocalPath,
+                             LocalPosixPath,
+                             LocalWindowsPath,
+                             AlternateDataStreamsHelper,
+                             RepoHelper,
+                             XattrHelper,)
 from augpathlib.caches import (CachePath,
                                PrimaryCache,
                                SqliteCache,

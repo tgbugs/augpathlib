@@ -1,7 +1,8 @@
 import shutil
-from pathlib import PurePosixPath
+import pathlib
 from augpathlib import exceptions as exc
-from augpathlib import LocalPath, PrimaryCache, RemotePath
+from augpathlib import LocalPath, LocalWindowsPath, LocalPosixPath
+from augpathlib import PrimaryCache, RemotePath
 from augpathlib import XattrCache, SymlinkCache
 from augpathlib import PathMeta
 
@@ -15,6 +16,11 @@ class TestLocalPath(LocalPath):
         return PathMeta(id=self._cache_class._remote_class.invAtTime(self, time))
 
 
+class TLPWin(TestLocalPath, LocalWindowsPath): pass
+class TLPPox(TestLocalPath, LocalPosixPath): pass
+TestLocalPath._bind_flavours()
+
+
 test_base = TestLocalPath(__file__).parent / 'test-base'
 test_path = test_base / 'test-container'
 
@@ -23,6 +29,11 @@ class TestCachePath(PrimaryCache, XattrCache):
     xattr_prefix = 'test'
     #_backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
+
+
+class TCPWin(TestCachePath, pathlib.WindowsPath): pass
+class TCPPos(TestCachePath, pathlib.PosixPath): pass
+TestCachePath._bind_flavours()
 
 
 class TestRemotePath(RemotePath):
@@ -85,7 +96,7 @@ class TestRemotePath(RemotePath):
         return not self.is_dir()
 
     def as_path(self):
-        return PurePosixPath(self.index_at_time[self.test_time][int(self.id)].relative_to(self.anchor))
+        return pathlib.PurePosixPath(self.index_at_time[self.test_time][int(self.id)].relative_to(self.anchor))
 
     @classmethod
     def invAtTime(cls, path, index):
@@ -111,6 +122,7 @@ class TestRemotePath(RemotePath):
     def __repr__(self):
         p = self.as_path()
         return f'{self.__class__.__name__} <{self.id!r} {p!r}>'
+
 
 # set up cache hierarchy
 TestLocalPath._cache_class = TestCachePath
