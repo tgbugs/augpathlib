@@ -363,7 +363,11 @@ class AugmentedPath(pathlib.Path):
 
 
     @classmethod
-    def _bind_flavours(cls):
+    def _bind_flavours(cls, auto=False):
+        if auto:
+            win = type('{cls.__name__}{Windows}', (cls, pathlib.WindowsPath), {})
+            pos = type('{cls.__name__}{Posix}', (cls, pathlib.PosixPath), {})
+
         cls.__abstractpath = cls
         for subcls in cls.__subclasses__():  # direct only
             if subcls._flavour is pathlib._posix_flavour:
