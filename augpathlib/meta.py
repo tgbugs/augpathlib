@@ -49,10 +49,16 @@ class PathMeta:
         if not file_id and file_id is not None and file_id is not 0:
             raise TypeError('wat')
         if created is not None and not isinstance(created, int) and not isinstance(created, datetime):
-            created = dateparser.parse(created)
+            _created = created
+        else:
+            self._created_ok = created
+            _created = None
 
         if updated is not None and not isinstance(updated, int) and not isinstance(updated, datetime):
-            updated = dateparser.parse(updated)
+            _updated = updated
+        else:
+            self._updated_ok = updated
+            _updated = None
 
         if id is not None and not isinstance(id, str):
             # no implicit type mutation, the system providing the ids
@@ -61,8 +67,8 @@ class PathMeta:
             raise TypeError(f'id must be a string! {id!r}')
 
         self.size = size if size is None else FileSize(size)
-        self.created = created
-        self.updated = updated
+        self._created = _created
+        self._updated = _updated
         self.checksum = checksum
         self.etag = etag
         self.chunksize = chunksize
@@ -82,6 +88,20 @@ class PathMeta:
         #embed()
         #return self._as_xattrs(self, prefix=prefix)
 
+    @property
+    def created(self):
+        if not hasattr(self, '_created_ok'):
+            self._created_ok = dateparser.parse(self._created)
+
+        return self._created_ok
+
+    @property
+    def updated(self):
+        if not hasattr(self, '_updated_ok'):
+            self._updated_ok = dateparser.parse(self._updated)
+
+        return self._updated_ok
+
     def content_different(self, other):
         """ is there any evidence that the file itself changed? """
         # branch on checksum presence since it is definitional
@@ -92,7 +112,7 @@ class PathMeta:
                     self.updated < other.updated)
 
     def items(self):
-        return self.__dict__.items()  # FIXME nonfields?
+        return [(k, v) for k, v in self.__dict__.items() if k[0] != '_']  # FIXME nonfields?
         #for field in self.fields:
             #yield field, getattr(self, field)
 
@@ -237,7 +257,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             return [_ for _ in value.split(self.subfieldsep) if _]
 
         elif field in ('created', 'updated'):
-            return dateparser.parse(value)
+            setattr(self, '_' + field, value)
+            return
 
         elif field == 'checksum':  # FIXME checksum encoding ...
             #return value.encode()
@@ -449,8 +470,8 @@ class _PathMetaAsXattrs(_PathMetaConverter):
                 return datetime.fromtimestamp(value)
             except struct.error:
                 pass
-
-            return dateparser.parse(value.decode())  # FIXME with timezone vs without ...
+            setattr(self, '_' + field, value.decode())  # FIXME with timezone vs without ...
+            return
 
         elif field == 'checksum':
             return value
