@@ -856,6 +856,10 @@ class SymlinkCache(CachePath):
                     meta_newer = 'Meta newer. Not updating.'
                     pathmeta_newer = 'Other meta newer.'
                     msg = '{}'  # apparently I was out of my mind when I wrote this originally ...
+                    if meta.updated is None and pathmeta.updated is None:
+                        log.warning ('no change since either has an updated value (wat)')
+                        return #FIXME
+
                     if meta.updated > pathmeta.updated:
                         log.info(msg.format(meta_newer))
                         return  # this is the right thing to do for a sane filesystem
