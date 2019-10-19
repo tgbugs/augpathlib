@@ -707,7 +707,7 @@ class LocalPath(AugmentedPath):
             else:
                 root = self.find_cache_root()  # FIXME is it safe to cache this??
                 rel_path = self.relative_to(root)
-            return (rel_path._cpath[0] in self._cache_class.cache_ignore or
+            return (rel_path.parts[0] in self._cache_class.cache_ignore or
                     # TODO more conditions
                     False)
         else:

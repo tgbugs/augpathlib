@@ -865,6 +865,7 @@ class SymlinkCache(CachePath):
                         return  # this is the right thing to do for a sane filesystem
                     elif meta.updated < pathmeta.updated:
                         log.info(msg.format(pathmeta_newer))
+                        # THIS IS EXPLICITLY ALLOWED
                     else:  # they are equal
                         extra = 'Both updated at the same time ' 
                         if meta.created is not None and pathmeta.created is not None:
@@ -873,6 +874,7 @@ class SymlinkCache(CachePath):
                                 return
                             elif meta.created < pathmeta.created:
                                 log.info(msg.format(extra + pathmeta_newer))
+                                # THIS IS EXPLICITLY ALLOWED
                             else:  # same created
                                 log.info(msg.format('Identical timestamps. Not updating.'))
                                 return
@@ -880,13 +882,15 @@ class SymlinkCache(CachePath):
                             log.info(msg.format(extra + 'Meta has datetime other does not. Not updating.'))
                             return
                         elif pathmeta.created is not None:
-                            log.info(msg.format(extra + 'Meta has no datetime other does.'))
+                            msg = msg.format(extra + 'Meta has no datetime other does.')
+                            log.info(msg)
+                            raise exc.MetadataIdMismatchError(msg)
                         else:  # both none
                             log.info(msg.format(extra + ('Identical update time both missing created time. '
                                                          'Not updating.')))
                             return
-                    #raise exc.MetadataIdMismatchError(msg)
-                    return
+                    # equality
+                # id mismatch all cases above should return or raise except for other metadata newer
 
                 if meta.size is not None and pathmeta.size is None:
                     log.error('new meta has no size so will not overwrite')

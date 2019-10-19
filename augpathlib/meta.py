@@ -112,7 +112,8 @@ class PathMeta:
                     self.updated < other.updated)
 
     def items(self):
-        return [(k, v) for k, v in self.__dict__.items() if k[0] != '_']  # FIXME nonfields?
+        out = [(k, v) for k, v in self.__dict__.items() if k[0] != '_']  # FIXME nonfields?
+        return out + [('created', self.created), ('updated', self.updated)]
         #for field in self.fields:
             #yield field, getattr(self, field)
 
@@ -137,7 +138,7 @@ class PathMeta:
         return (self.__class__, {k:v for k, v in self.items() if v is not None})
 
     def __repr__(self):
-        _dict = {k:v for k, v in self.__dict__.items() if not k.startswith('_')}
+        _dict = {k:v for k, v in self.items() if not k.startswith('_')}
         return f'{self.__class__.__name__}({_dict})'
 
     def __eq__(self, other):
@@ -258,7 +259,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         elif field in ('created', 'updated'):
             setattr(self, '_' + field, value)
-            return
+            return value
 
         elif field == 'checksum':  # FIXME checksum encoding ...
             #return value.encode()
@@ -470,8 +471,9 @@ class _PathMetaAsXattrs(_PathMetaConverter):
                 return datetime.fromtimestamp(value)
             except struct.error:
                 pass
-            setattr(self, '_' + field, value.decode())  # FIXME with timezone vs without ...
-            return
+            vd = value.decode()
+            setattr(self, '_' + field, vd)  # FIXME with timezone vs without ...
+            return vd
 
         elif field == 'checksum':
             return value
