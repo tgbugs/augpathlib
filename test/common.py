@@ -1,5 +1,7 @@
+import os
 import shutil
 import pathlib
+import pytest
 from augpathlib import exceptions as exc
 from augpathlib import LocalPath, LocalWindowsPath, LocalPosixPath
 from augpathlib import PrimaryCache, RemotePath
@@ -8,6 +10,10 @@ from augpathlib import PathMeta
 
 this_file = LocalPath(__file__)
 project_path = this_file.parent / 'test_local/test_project'
+
+SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or
+                'FEATURES' in os.environ and 'network-sandbox' in os.environ['FEATURES'])
+skipif_no_net = pytest.mark.skipif(SKIP_NETWORK, reason='Skipping due to network requirement')
 
 
 class TestLocalPath(LocalPath):

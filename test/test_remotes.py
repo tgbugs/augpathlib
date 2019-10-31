@@ -6,8 +6,9 @@ import pytest
 from augpathlib import LocalPath as Path
 from augpathlib.caches import SshCache, ReflectiveCache
 from augpathlib.remotes import SshRemoteFactory
-from .common import project_path, TestPathHelper
+from .common import project_path, TestPathHelper, skipif_no_net
 
+@skipif_no_net
 @pytest.mark.skipif('CI' in os.environ, reason='Requires ssh/.config to be set up correctly.')
 class TestSshRemote(TestPathHelper, unittest.TestCase):
     def setUp(self):

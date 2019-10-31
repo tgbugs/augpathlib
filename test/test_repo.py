@@ -1,8 +1,9 @@
 import os
 import pathlib
 import unittest
-from augpathlib import RepoPath, LocalPath
 import pytest
+from augpathlib import RepoPath, LocalPath
+from .common import skipif_no_net
 
 testing_base = RepoPath(f'/tmp/.augpathlib-testing-base-{os.getpid()}')
 
@@ -35,14 +36,14 @@ class TestRepoPath(unittest.TestCase):
         rp = testing_base.clone_path('https://github.com/tgbugs/augpathlib.git')
         assert rp.name == 'augpathlib', 'https form failed'
 
+    @skipif_no_net
     def test_init_with_remote(self):
-        # XXX hits the network
         rp = testing_base / 'test-repo'
         repo = rp.init('https://github.com/tgbugs/augpathlib.git', depth=1)
         assert repo, f'{rp!r} {repo}'
 
+    @skipif_no_net
     def test_clone_from(self):
-        # XXX hits the network
         rp = testing_base.clone_from('https://github.com/tgbugs/augpathlib.git', depth=1)
         assert rp.repo, f'{rp!r} {rp.repo}'
 
