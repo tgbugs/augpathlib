@@ -16,6 +16,15 @@ __version__ = find_version('augpathlib/__init__.py')
 with open('README.md', 'rt') as f:
     long_description = f.read()
 
+try:
+    import magic
+    if hasattr(magic, 'libmagic'):
+        magic_dep = 'python-magic'
+    else:
+        magic_dep = 'file_magic'
+except ImportError:
+    magic_dep = 'python-magic'
+
 platform_dependent_require = []
 if os.name != 'nt':
     platform_dependent_require += ['pyxattr']
@@ -43,10 +52,10 @@ setup(
     tests_require=tests_require,
     install_requires=platform_dependent_require + [
         'gitpython',
+        magic_dep,
         'pexpect>=4.7.0',
         #'psutil',
         'python-dateutil',
-        'python-magic',  # FIXME conflicts with sys-apps/file python bindings
         'terminaltables',
         #'Xlib',
     ],
