@@ -70,8 +70,8 @@ class RemotePath:
                 cls.init(cache_anchor.id)
 
             if cls.root != cache_anchor.id:
-                raise ValueError(f'root and anchor ids do not match! '
-                                 '{cls.root} != {cache_anchor.id}')
+                raise ValueError('root and anchor ids do not match! '
+                                 f'{cls.root} != {cache_anchor.id}')
 
             cls._cache_anchor = cache_anchor
         else:
