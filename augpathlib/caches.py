@@ -1,7 +1,7 @@
 import pathlib
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
-from augpathlib.core import AugmentedPath, AugmentedWindowsPath,AugmentedPosixPath, XattrHelper
+from augpathlib.core import AugmentedPath, AugmentedWindowsPath,AugmentedPosixPath, XattrHelper, ADSHelper
 from augpathlib.utils import log, LOCAL_DATA_DIR, default_cypher
 from augpathlib import remotes
 
@@ -750,7 +750,7 @@ class ReflectivePosixCache(ReflectiveCache, pathlib.PosixPath): pass
 ReflectiveCache._bind_flavours()
 
 
-class XattrCache(XattrHelper, CachePath):
+class XattrCache(CachePath):
     xattr_prefix = None
 
     @property
@@ -784,9 +784,8 @@ class XattrCache(XattrHelper, CachePath):
             super()._meta_setter(pathmeta, memory_only=memory_only)
 
 
-
-class XattrWindowsCache(XattrCache, pathlib.WindowsPath): pass
-class XattrPosixCache(XattrCache, pathlib.PosixPath): pass
+class XattrWindowsCache(ADSHelper, XattrCache, pathlib.WindowsPath): pass
+class XattrPosixCache(XattrHelper, XattrCache, pathlib.PosixPath): pass
 XattrCache._bind_flavours()
 
 
@@ -1121,8 +1120,8 @@ class SshCache(PrimaryCache, XattrCache):
         yield from self.remote.data
 
 
-class SshWindowsCache(SshCache, pathlib.WindowsPath): pass
-class SshPosixCache(SshCache, pathlib.PosixPath): pass
+class SshWindowsCache(ADSHelper, SshCache, pathlib.WindowsPath): pass
+class SshPosixCache(XattrHelper, SshCache, pathlib.PosixPath): pass
 SshCache._bind_flavours()
 
 

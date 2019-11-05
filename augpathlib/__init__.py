@@ -11,7 +11,7 @@ from augpathlib.core import (AugmentedPath,
                              LocalPath,
                              LocalPosixPath,
                              LocalWindowsPath,
-                             AlternateDataStreamsHelper,
+                             ADSHelper,
                              RepoHelper,
                              XattrHelper,)
 from augpathlib.caches import (CachePath,

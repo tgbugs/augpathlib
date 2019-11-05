@@ -6,6 +6,7 @@ from augpathlib import exceptions as exc
 from augpathlib import LocalPath, LocalWindowsPath, LocalPosixPath
 from augpathlib import PrimaryCache, RemotePath
 from augpathlib import XattrCache, SymlinkCache
+from augpathlib import ADSHelper, XattrHelper
 from augpathlib import PathMeta
 
 this_file = LocalPath(__file__)
@@ -37,8 +38,8 @@ class TestCachePath(PrimaryCache, XattrCache):
     _not_exists_cache = SymlinkCache
 
 
-class TCPWin(TestCachePath, pathlib.WindowsPath): pass
-class TCPPos(TestCachePath, pathlib.PosixPath): pass
+class TCPWin(ADSHelper, TestCachePath, pathlib.WindowsPath): pass
+class TCPPos(XattrHelper, TestCachePath, pathlib.PosixPath): pass
 TestCachePath._bind_flavours()
 
 

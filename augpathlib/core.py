@@ -298,7 +298,7 @@ class RepoHelper:
         return self.commit(message, date=date)
 
 
-class AlternateDataStreamsHelper:
+class ADSHelper:
     """ Windows NTFS equivalent of Xattrs is Alternate Data Streams
         This class allows ADS to pretend to work like xattrs.
     """
@@ -308,12 +308,12 @@ class AlternateDataStreamsHelper:
         return namespace + '.' + key  # FIXME maybe include xattrs. as well ??
 
     def _stream(self, name):
-        start*, last = self.parts
+        *start, last = self.parts
         return self.__class__(*start, last + ':' + name)
 
     @property
     def _streamname(self):
-        start*, last = self.parts
+        *start, last = self.parts
         if ':' in last:
             return last.split(1, ':')[-1]
 
@@ -1088,7 +1088,7 @@ class LocalPath(AugmentedPath):
         return
 
 
-class LocalWindowsPath(AlternateDataStreamsHelper, LocalPath, pathlib.WindowsPath): pass
+class LocalWindowsPath(ADSHelper, LocalPath, pathlib.WindowsPath): pass
 class LocalPosixPath(XattrHelper, LocalPath, pathlib.PosixPath): pass
 LocalPath._bind_flavours()
 
