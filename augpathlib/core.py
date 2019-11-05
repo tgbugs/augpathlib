@@ -18,7 +18,7 @@ if os.name != 'nt':
     XATTR_DEFAULT_NS = xattr.NS_USER
 else:
     from augpathlib import pyads
-    XATTR_DEFAULT_NS = None  # should not need these on an nt system
+    XATTR_DEFAULT_NS = 'user'
 
 #import psutil  # import for experimental xopen functionality
 from git import Repo
@@ -299,21 +299,100 @@ class RepoHelper:
 
 
 class AlternateDataStreamsHelper:
-    """ pathlib helper augmented with NTFS ADS """
+    """ Windows NTFS equivalent of Xattrs is Alternate Data Streams
+        This class allows ADS to pretend to work like xattrs.
+    """
 
-    def setxattr(self, key, value):
-        raise NotImplementedError('this will be the compatibility api layer when finished')
+    @staticmethod
+    def _key_convention(key, namespace):
+        return namespace + '.' + key  # FIXME maybe include xattrs. as well ??
 
-    def setxattrs(self, xattr_dict):
-        raise NotImplementedError('this will be the compatibility api layer when finished')
+    def _stream(self, name):
+        start*, last = self.parts
+        return self.__class__(*start, last + ':' + name)
 
-    def getxattr(self, key):
-        raise NotImplementedError('this will be the compatibility api layer when finished')
+    @property
+    def _streamname(self):
+        start*, last = self.parts
+        if ':' in last:
+            return last.split(1, ':')[-1]
 
-    def xattrs(self):
-        raise NotImplementedError('this will be the compatibility api layer when finished')
+    @property
+    def _streams(self):
+        file_infos = pyads.WIN32_FIND_STREAM_DATA()
+        #streamlist = list()
 
-    # TODO actual ADS implementation for windows
+        findFirstStreamW = pyads.kernel32.FindFirstStreamW
+        findFirstStreamW.restype = pyads.c_void_p
+
+        try:
+            myhandler = pyads.kernel32.FindFirstStreamW (LPSTR(self.as_posix()), 0, byref(file_infos), 0)
+            '''
+            HANDLE WINAPI FindFirstStreamW(
+            __in        LPCWSTR lpFileName,
+            __in        STREAM_INFO_LEVELS InfoLevel, (0 standard, 1 max infos)
+            __out       LPVOID lpFindStreamData, (return information about file in a WIN32_FIND_STREAM_DATA if 0 is given in infos_level
+            __reserved  DWORD dwFlags (Reserved for future use. This parameter must be zero.) cf: doc
+            );
+            https://msdn.microsoft.com/en-us/library/aa364424(v=vs.85).aspx
+            '''
+            p = pyads.c_void_p(myhandler)
+
+            if file_infos.cStreamName:
+                streampath = file_infos.cStreamName
+                yield self.__class__(streampath)
+                #streamname = file_infos.cStreamName.split(":")[1]
+                #if streamname:
+                    #streamlist.append(streamname)
+
+                while pyads.kernel32.FindNextStreamW(p, byref(file_infos)):
+                    streampath = file_infos.cStreamName
+                    yield self.__class__(streampath)
+                    #streamlist.append(file_infos.cStreamName.split(":")[1])
+
+            #return streamlist
+
+        finally:
+            pyads.kernel32.FindClose(p)  # Close the handle
+
+    def setxattr(self, key, value, namespace=XATTR_DEFAULT_NS):
+        if not isinstance(value, bytes):  # checksums
+            raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
+        else:
+            bytes_value = value
+
+        name = self._key_convention(key, namespace)
+        with open(self._stream(name), 'wb') as f:
+            f.write(bytes_value)
+
+    def setxattrs(self, xattr_dict, namespace=XATTR_DEFAULT_NS):
+        for k, v in xattr_dict.items():
+            self.setxattr(k, v, namespace=namespace)
+
+    def getxattr(self, key, namespace=XATTR_DEFAULT_NS):
+        # we don't deal with types here, we just act as a dumb store
+        name = self._key_convention(key, namespace)
+        with open(self._stream(name), 'wb') as f:
+            return f.read(bytes_value)
+
+    def xattrs(self, namespace=XATTR_DEFAULT_NS):
+        # decode keys later
+        lnp1 = len(namespace) + 1
+        try:
+            out = {}
+            for stream in self._streams:
+                maybe_k = stream.name
+                if maybe_k.startswith(namespace):
+                    k = maybe_k[lnp1:]
+                    with open(stream, 'rb') as f:
+                        v = f.read()
+
+                    out[k] = v  # FIXME probably have to encode the keys for consistency
+
+            return out
+
+        except FileNotFoundError as e:
+            raise FileNotFoundError(self) from e
 
 
 class XattrHelper:
