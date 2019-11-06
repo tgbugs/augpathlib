@@ -689,7 +689,55 @@ class AugmentedWindowsPath(AugmentedPath, pathlib.WindowsPath):
     _registry_drives = 'hklm', 'hkcu', 'HKLM', 'HKCU'
 
 
+def splitroot(self, part, sep='\\'):
+    first = part[0:1]
+    second = part[1:2]
+    if (second == sep and first == sep):
+        # XXX extended paths should also disable the collapsing of "."
+        # components (according to MSDN docs).
+        prefix, part = self._split_extended_path(part)
+        first = part[0:1]
+        second = part[1:2]
+    else:
+        prefix = ''
+    third = part[2:3]
+    if (second == sep and first == sep and third != sep):
+        # is a UNC path:
+        # vvvvvvvvvvvvvvvvvvvvv root
+        # \\machine\mountpoint\directory\etc\...
+        #            directory ^^^^^^^^^^^^^^
+        index = part.find(sep, 2)
+        if index != -1:
+            index2 = part.find(sep, index + 1)
+            # a UNC path can't have two slashes in a row
+            # (after the initial two)
+            if index2 != index + 1:
+                if index2 == -1:
+                    index2 = len(part)
+                if prefix:
+                    return prefix + part[1:index2], sep, part[index2+1:]
+                else:
+                    return part[:index2], sep, part[index2+1:]
+    drv = root = ''
+    if second == ':' and first in self.drive_letters:
+        drv = part[:2]
+        part = part[2:]
+        first = third
+    elif (part[-1:] == sep and
+          part[-2:-1] == ':' and
+          part[:-2] in self.drive_letters):
+        drv = part[:-2]
+        part = part[-2:]
+        first = part[-1:]
+    if first == sep:
+        root = first
+        part = part.lstrip(sep)
+    return prefix + drv, root, part
+
+
 pathlib._WindowsFlavour.drive_letters.update(AugmentedWindowsPath._registry_drives)
+pathlib._WindowsFlavour.splitroot = splitroot
+pathlib._windows_flavour.slitroot = pathlib._WindowsFlavour().splitroot
 
 
 class AugmentedPosixPath(AugmentedPath, pathlib.PosixPath): pass
