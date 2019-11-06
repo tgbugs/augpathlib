@@ -723,12 +723,16 @@ def splitroot(self, part, sep='\\'):
         drv = part[:2]
         part = part[2:]
         first = third
-    elif (part[-1:] == sep and
-          part[-2:-1] == ':' and
-          part[:-2] in self.drive_letters):
-        drv = part[:-2]
-        part = part[-2:]
-        first = part[-1:]
+    else:
+        index1 = part.find(':')
+        index2 = part.find(sep)
+        if index1 != -1 and (index2 == -1 or index1 < index2):
+            maybe_drv = part[:index1]
+            if maybe_drv in self.drive_letters:
+                drv = part[:index1]
+                part = part[index1:]
+                first = part[0:1]
+
     if first == sep:
         root = first
         part = part.lstrip(sep)
