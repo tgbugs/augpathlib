@@ -737,7 +737,7 @@ def splitroot(self, part, sep='\\'):
 
 pathlib._WindowsFlavour.drive_letters.update(AugmentedWindowsPath._registry_drives)
 pathlib._WindowsFlavour.splitroot = splitroot
-pathlib._windows_flavour.slitroot = pathlib._WindowsFlavour().splitroot
+pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
 
 
 class AugmentedPosixPath(AugmentedPath, pathlib.PosixPath): pass
