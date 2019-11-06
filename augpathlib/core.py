@@ -17,6 +17,7 @@ if os.name != 'nt':
     import xattr
     XATTR_DEFAULT_NS = xattr.NS_USER
 else:
+    import winreg
     from augpathlib import pyads
     XATTR_DEFAULT_NS = 'user'
 
@@ -684,7 +685,13 @@ class AugmentedPath(pathlib.Path):
             return m.digest()
 
 
-class AugmentedWindowsPath(AugmentedPath, pathlib.WindowsPath): pass
+class AugmentedWindowsPath(AugmentedPath, pathlib.WindowsPath):
+    _registry_drives = 'hklm', 'hkcu', 'HKLM', 'HKCU'
+
+
+pathlib._WindowsFlavour.drive_letters.update(AugmentedWindowsPath._registry_drives)
+
+
 class AugmentedPosixPath(AugmentedPath, pathlib.PosixPath): pass
 AugmentedPath._bind_flavours()
 
