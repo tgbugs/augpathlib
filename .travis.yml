@@ -12,8 +12,8 @@ branches:
     depth: 3
 
 python:
-  - 3.7
   - 3.6
+  - 3.7
 
 install:
   - pip install --upgrade pytest pytest-cov
@@ -22,7 +22,7 @@ install:
   - pipenv install --system --skip-lock --deploy
 
 script:
-  - PYTHONWARNINGS=ignore pipenv run pytest --verbose --cov=augpathlib
+  - pipenv run pytest
 
 after_success:
   - if [[ $HAS_COVERALLS ]] ; then coveralls ; fi
