@@ -1,6 +1,7 @@
 import os
 import shutil
 import pathlib
+from tempfile import gettempdir
 import pytest
 from augpathlib import exceptions as exc
 from augpathlib import LocalPath
@@ -9,6 +10,7 @@ from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
 
 this_file = LocalPath(__file__)
+temp_path = gettempdir()
 project_path = this_file.parent / 'test_local/test_project'
 
 SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or

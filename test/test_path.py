@@ -4,8 +4,14 @@ from augpathlib import AugmentedPath, LocalPath
 from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
 from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
-from .common import project_path, test_base, test_path, TestPathHelper
-from .common import TestLocalPath, TestCachePath, TestRemotePath
+from .common import (project_path,
+                     temp_path,
+                     test_base,
+                     test_path,
+                     TestPathHelper,
+                     TestLocalPath,
+                     TestCachePath,
+                     TestRemotePath)
 
 SymlinkCache._local_class = AugmentedPath  # have to set a default
 
@@ -16,7 +22,7 @@ class TestPathMeta(unittest.TestCase):
     def setUp(self):
         self.path = TestLocalPath(project_path)
 
-        self.test_path = TestLocalPath('/tmp/testpath')  # FIXME random needed ...
+        self.test_path = TestLocalPath(temp_path, 'testpath')  # FIXME random needed ...
         if self.test_path.is_symlink():
             self.test_path.unlink()
 
@@ -63,7 +69,7 @@ class TestPathMeta(unittest.TestCase):
         assert meta == new_meta, msg
 
     def _test_symlink_roundtrip_weird(self):
-        path = TestLocalPath('/tmp/testpath')  # FIXME random needed ...
+        path = TestLocalPath(temp_path, 'testpath')  # FIXME random needed ...
         meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
         pure_symlink = PurePosixPath(path.name) / meta.as_symlink()
         path.symlink_to(pure_symlink)

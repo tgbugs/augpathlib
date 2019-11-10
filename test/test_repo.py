@@ -1,20 +1,17 @@
 import os
 import pathlib
 import unittest
-from tempfile import gettempdir
 import pytest
 from augpathlib import RepoPath, LocalPath
-from .common import skipif_no_net
+from .common import skipif_no_net, temp_path
 
-testing_base = RepoPath(gettempdir(), f'.augpathlib-testing-base-{os.getpid()}')
+testing_base = RepoPath(temp_path, f'.augpathlib-testing-base-{os.getpid()}')
 
 
 class HybridPath(RepoPath, LocalPath):
     """ Combined functionality """
 
 
-#class HWP(HybridPath, pathlib.WindowsPath): pass
-#class HPP(HybridPath, pathlib.PosixPath): pass
 HybridPath._bind_flavours()
 
 
