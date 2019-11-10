@@ -379,7 +379,11 @@ class ADSHelper(EatHelper):
             key = key.decode()
 
         name = self._key_convention(key, namespace)
-        with open(self._stream(name), 'wb') as f:
+        stream = self._stream(name).absolute()
+        # single letter file names with no extension
+        # masquerade as drive letters on windows so
+        # to be safe always use absolute for this
+        with open(stream, 'wb') as f:
             f.write(bytes_value)
 
     def setxattrs(self, xattr_dict, namespace=XATTR_DEFAULT_NS):
