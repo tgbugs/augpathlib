@@ -44,42 +44,42 @@ class TestRemotePath(RemotePath):
     anchor = test_path
     ids = {0: anchor}  # time invariant
     dirs = {2, 3, 4, 8, 9, 11, 12, 13, 14, 16, 17, 18}
-    index_at_time = {1: {1: anchor / 'a',
+    index_at_time = {1: {1: anchor / 'a.e',
 
-                         2: anchor / 'c',
+                         2: anchor / 'c.e',
 
-                         3: anchor / 'e',
-                         4: anchor / 'e/f',
-                         5: anchor / 'e/f/g',
+                         3: anchor / 'ee',
+                         4: anchor / 'ee/ff',
+                         5: anchor / 'ee/ff/gg',
 
-                         8: anchor / 'i',
-                         9: anchor / 'i/j',
-                         10: anchor / 'i/j/k',
+                         8: anchor / 'ii',
+                         9: anchor / 'ii/jj',
+                         10: anchor / 'ii/jj/kk',
 
-                         13: anchor / 'n',
-                         14: anchor / 'n/o',
-                         15: anchor / 'n/o/p',
+                         13: anchor / 'nn',
+                         14: anchor / 'nn/oo',
+                         15: anchor / 'nn/oo/pp',
 
-                         18: anchor / 't',},
-                     2: {1: anchor / 'b',
+                         18: anchor / 't.e',},
+                     2: {1: anchor / 'b.e',
 
-                         2: anchor / 'd',
+                         2: anchor / 'd.e',
 
-                         3: anchor / 'h/',
-                         4: anchor / 'h/f',
-                         5: anchor / 'h/f/g',
+                         3: anchor / 'hh/',
+                         4: anchor / 'hh/ff',
+                         5: anchor / 'hh/ff/gg',
 
-                         11: anchor / 'l',
-                         12: anchor / 'l/m',
-                         10: anchor / 'l/m/k',
+                         11: anchor / 'll',
+                         12: anchor / 'll/mm',
+                         10: anchor / 'll/mm/kk',
 
-                         16: anchor / 'q',
-                         17: anchor / 'q/r',
-                         15: anchor / 'q/r/s',
+                         16: anchor / 'qq',
+                         17: anchor / 'qq/rr',
+                         15: anchor / 'qq/rr/ss',
 
-                         18: anchor / 't',
+                         18: anchor / 't.e',
 
-                         19: anchor / 'u',}}
+                         19: anchor / 'u.e',}}
 
     for ind in index_at_time:
         index_at_time[ind].update(ids)
