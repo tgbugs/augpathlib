@@ -319,7 +319,10 @@ class ADSHelper(EatHelper):
         return namespace + '.' + key  # FIXME maybe include xattrs. as well ??
 
     def _stream(self, name):
-        *start, last = self.parts
+        # single letter file names with no extension
+        # masquerade as drive letters on windows so
+        # to be safe always use absolute for this
+        *start, last = self.absolute().parts
         return AugmentedPath(*start, last + ':' + name)
 
     @property
@@ -379,10 +382,7 @@ class ADSHelper(EatHelper):
             key = key.decode()
 
         name = self._key_convention(key, namespace)
-        stream = self._stream(name).absolute()
-        # single letter file names with no extension
-        # masquerade as drive letters on windows so
-        # to be safe always use absolute for this
+        stream = self._stream(name)
         with open(stream, 'wb') as f:
             f.write(bytes_value)
 
