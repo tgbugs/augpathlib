@@ -12,8 +12,8 @@ class HybridPath(RepoPath, LocalPath):
     """ Combined functionality """
 
 
-class HWP(HybridPath, pathlib.WindowsPath): pass
-class HPP(HybridPath, pathlib.PosixPath): pass
+#class HWP(HybridPath, pathlib.WindowsPath): pass
+#class HPP(HybridPath, pathlib.PosixPath): pass
 HybridPath._bind_flavours()
 
 

@@ -3,10 +3,9 @@ import shutil
 import pathlib
 import pytest
 from augpathlib import exceptions as exc
-from augpathlib import LocalPath, LocalWindowsPath, LocalPosixPath
+from augpathlib import LocalPath
 from augpathlib import PrimaryCache, RemotePath
-from augpathlib import XattrCache, SymlinkCache
-from augpathlib import ADSHelper, XattrHelper
+from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
 
 this_file = LocalPath(__file__)
@@ -23,8 +22,6 @@ class TestLocalPath(LocalPath):
         return PathMeta(id=self._cache_class._remote_class.invAtTime(self, time))
 
 
-class TLPWin(TestLocalPath, LocalWindowsPath): pass
-class TLPPox(TestLocalPath, LocalPosixPath): pass
 TestLocalPath._bind_flavours()
 
 
@@ -32,14 +29,12 @@ test_base = TestLocalPath(__file__).parent / 'test-base'
 test_path = test_base / 'test-container'
 
 
-class TestCachePath(PrimaryCache, XattrCache):
+class TestCachePath(PrimaryCache, EatCache):
     xattr_prefix = 'test'
     #_backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
 
 
-class TCPWin(ADSHelper, TestCachePath, pathlib.WindowsPath): pass
-class TCPPos(XattrHelper, TestCachePath, pathlib.PosixPath): pass
 TestCachePath._bind_flavours()
 
 

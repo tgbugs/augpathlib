@@ -1,7 +1,7 @@
 import pathlib
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
-from augpathlib.core import AugmentedPath, AugmentedWindowsPath,AugmentedPosixPath, XattrHelper, ADSHelper
+from augpathlib.core import AugmentedPath, EatHelper
 from augpathlib.utils import log, LOCAL_DATA_DIR, default_cypher
 from augpathlib import remotes
 
@@ -732,8 +732,6 @@ class CachePath(AugmentedPath):
         return self.__class__.__name__ + ' <' + local + ' -> ' + remote + '>'
 
 
-class CacheWindowsPath(CachePath, pathlib.WindowsPath): pass
-class CachePosixPath(CachePath, pathlib.PosixPath): pass
 CachePath._bind_flavours()
 
 
@@ -745,12 +743,10 @@ class ReflectiveCache(CachePath):
         return self.local.meta
 
 
-class ReflectiveWindowsCache(ReflectiveCache, pathlib.WindowsPath): pass
-class ReflectivePosixCache(ReflectiveCache, pathlib.PosixPath): pass
 ReflectiveCache._bind_flavours()
 
 
-class XattrCache(CachePath):
+class EatCache(EatHelper, CachePath):
     xattr_prefix = None
 
     @property
@@ -784,9 +780,7 @@ class XattrCache(CachePath):
             super()._meta_setter(pathmeta, memory_only=memory_only)
 
 
-class XattrWindowsCache(ADSHelper, XattrCache, pathlib.WindowsPath): pass
-class XattrPosixCache(XattrHelper, XattrCache, pathlib.PosixPath): pass
-XattrCache._bind_flavours()
+EatCache._bind_flavours()
 
 
 class SqliteCache(CachePath):
@@ -809,8 +803,6 @@ class SqliteCache(CachePath):
         #log.error('SqliteCache setter not implemented yet. Should probably be done in bulk anyway ...')
 
 
-class SqliteWindowsCache(SqliteCache, pathlib.WindowsPath): pass
-class SqlitePosixCache(SqliteCache, pathlib.PosixPath): pass
 SqliteCache._bind_flavours()
 
 
@@ -914,8 +906,6 @@ class SymlinkCache(CachePath):
             raise exc.PathExistsError(f'Path exists {self}')
 
 
-class SymlinkWindowsCache(SymlinkCache, pathlib.WindowsPath): pass
-class SymlinkPosixCache(SymlinkCache, pathlib.PosixPath): pass
 SymlinkCache._bind_flavours()
 
 
@@ -1095,12 +1085,10 @@ class PrimaryCache(CachePath):
         # if package/file
 
 
-class PrimaryWindowsCache(PrimaryCache, pathlib.WindowsPath): pass
-class PrimaryPosixCache(PrimaryCache, pathlib.PosixPath): pass
 PrimaryCache._bind_flavours()
 
 
-class SshCache(PrimaryCache, XattrCache):
+class SshCache(PrimaryCache, EatCache):
     xattr_prefix = 'ssh'
     _backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
@@ -1120,8 +1108,6 @@ class SshCache(PrimaryCache, XattrCache):
         yield from self.remote.data
 
 
-class SshWindowsCache(ADSHelper, SshCache, pathlib.WindowsPath): pass
-class SshPosixCache(XattrHelper, SshCache, pathlib.PosixPath): pass
 SshCache._bind_flavours()
 
 

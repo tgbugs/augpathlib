@@ -1,24 +1,15 @@
 from augpathlib.meta import PathMeta
 from augpathlib.core import (AugmentedPath,
-                             AugmentedPosixPath,
-                             AugmentedWindowsPath,
                              RepoPath,
-                             RepoPosixPath,
-                             RepoWindowsPath,
                              XopenPath,
-                             XopenPosixPath,
-                             XopenWindowsPath,
                              LocalPath,
-                             LocalPosixPath,
-                             LocalWindowsPath,
-                             ADSHelper,
-                             RepoHelper,
-                             XattrHelper,)
+                             EatHelper,
+                             RepoHelper)
 from augpathlib.caches import (CachePath,
                                PrimaryCache,
                                SqliteCache,
                                SymlinkCache,
-                               XattrCache,
+                               EatCache,
                                SshCache)
 from augpathlib.remotes import RemotePath
 from augpathlib.utils import StatResult, FileSize, etag

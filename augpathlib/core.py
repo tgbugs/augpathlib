@@ -299,7 +299,17 @@ class RepoHelper:
         return self.commit(message, date=date)
 
 
-class ADSHelper:
+class EatHelper:
+    """ Extended attributes helper """
+
+    @classmethod
+    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        pos_helpers = pos_helpers + (XattrHelper,)
+        win_helpers = win_helpers + (ADSHelper,)
+        super()._bind_flavours(pos_helpers, win_helpers)
+
+
+class ADSHelper(EatHelper):
     """ Windows NTFS equivalent of Xattrs is Alternate Data Streams
         This class allows ADS to pretend to work like xattrs.
     """
@@ -399,7 +409,7 @@ class ADSHelper:
             raise FileNotFoundError(self) from e
 
 
-class XattrHelper:
+class XattrHelper(EatHelper):
     """ pathlib helper augmented with xattr support """
 
     def setxattr(self, key, value, namespace=XATTR_DEFAULT_NS):
@@ -444,21 +454,34 @@ class AugmentedPath(pathlib.Path):
     count = 0
     _debug = False  # sigh
 
-
     @classmethod
-    def _bind_flavours(cls, auto=False):
-        if auto:
-            win = type(f'{cls.__name__}Windows', (cls, pathlib.WindowsPath), {})
-            pos = type(f'{cls.__name__}Posix', (cls, pathlib.PosixPath), {})
+    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        pos, win = cls._get_flavours()
+
+        if pos is None:
+            pos = type(f'{cls.__name__}Posix',
+                       (*pos_helpers, cls, pathlib.PosixPath), {})
+
+        if win is None:
+            win = type(f'{cls.__name__}Windows',
+                       (*win_helpers, cls, pathlib.WindowsPath), {})
 
         cls.__abstractpath = cls
+        cls.__posixpath = pos
+        cls.__windowspath = win
+
+    @classmethod
+    def _get_flavours(cls):
+        pos, win = None, None
         for subcls in cls.__subclasses__():  # direct only
             if subcls._flavour is pathlib._posix_flavour:
-                cls.__posixpath = subcls
+                pos = subcls
             elif subcls._flavour is pathlib._windows_flavour:
-                cls.__windowspath = subcls
+                win = subcls
             else:
                 raise TypeError(f'unknown flavour for {cls} {cls._flavour}')
+
+        return pos, win
 
     @classmethod
     def _abstract_class(cls):
@@ -685,7 +708,7 @@ class AugmentedPath(pathlib.Path):
             return m.digest()
 
 
-class AugmentedWindowsPath(AugmentedPath, pathlib.WindowsPath):
+class AugmentedPathWindows(AugmentedPath, pathlib.WindowsPath):
     _registry_drives = 'hklm', 'hkcu', 'HKLM', 'HKCU'
 
 
@@ -739,16 +762,16 @@ def splitroot(self, part, sep='\\'):
     return prefix + drv, root, part
 
 
-pathlib._WindowsFlavour.drive_letters.update(AugmentedWindowsPath._registry_drives)
+pathlib._WindowsFlavour.drive_letters.update(AugmentedPathWindows._registry_drives)
 pathlib._WindowsFlavour.splitroot = splitroot
 pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
 
 
-class AugmentedPosixPath(AugmentedPath, pathlib.PosixPath): pass
+class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
 AugmentedPath._bind_flavours()
 
 
-class LocalPath(AugmentedPath):
+class LocalPath(EatHelper, AugmentedPath):
     # local data about remote objects
 
     chunksize = 4096  # make the data generator chunksize visible externally
@@ -1150,14 +1173,10 @@ class LocalPath(AugmentedPath):
         return
 
 
-class LocalWindowsPath(ADSHelper, LocalPath, pathlib.WindowsPath): pass
-class LocalPosixPath(XattrHelper, LocalPath, pathlib.PosixPath): pass
 LocalPath._bind_flavours()
 
 
 class RepoPath(RepoHelper, AugmentedPath): pass
-class RepoWindowsPath(RepoPath, pathlib.WindowsPath): pass
-class RepoPosixPath(RepoPath, pathlib.PosixPath): pass
 RepoPath._bind_flavours()
 
 
@@ -1230,8 +1249,6 @@ class XopenPosixPath(XopenPath, pathlib.PosixPath):
                 sleep(.01)  # spin a bit more slowly
 
 
-class XopenWindowsPath(XopenPath, pathlib.WindowsPath): pass
-class XopenPosixPath(XopenPath, pathlib.PosixPath): pass
 XopenPath._bind_flavours()
 
 # any additional values
