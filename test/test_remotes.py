@@ -9,6 +9,7 @@ from augpathlib.remotes import SshRemoteFactory
 from .common import project_path, TestPathHelper, skipif_no_net
 
 @skipif_no_net
+@pytest.mark.skipif(os.name == 'nt', reason='No pxssh for windows at the moment.')
 @pytest.mark.skipif('CI' in os.environ, reason='Requires ssh/.config to be set up correctly.')
 class TestSshRemote(TestPathHelper, unittest.TestCase):
     def setUp(self):

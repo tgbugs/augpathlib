@@ -320,7 +320,7 @@ class ADSHelper(EatHelper):
 
     def _stream(self, name):
         *start, last = self.parts
-        return self.__class__(*start, last + ':' + name)
+        return AugmentedPath(*start, last + ':' + name)
 
     @property
     def _streamname(self):
@@ -374,6 +374,9 @@ class ADSHelper(EatHelper):
             raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
         else:
             bytes_value = value
+
+        if isinstance(key, bytes):
+            key = key.decode()
 
         name = self._key_convention(key, namespace)
         with open(self._stream(name), 'wb') as f:
@@ -655,7 +658,7 @@ class AugmentedPath(pathlib.Path):
             self.chdir()
             return self
         else:
-            super().__enter__(self)
+            super().__enter__()
 
     def __exit__(self, t, v, tb):
         if hasattr(self, '_entered_from'):

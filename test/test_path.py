@@ -111,8 +111,8 @@ class TestPrefixEvil(TestPathMeta):
 class TestContext(unittest.TestCase):
     def test_context(self):
         start = AugmentedPath.cwd()
-        target = AugmentedPath('/tmp/')
-        distractor = AugmentedPath('/home/')
+        target = AugmentedPath(temp_path)
+        distractor = AugmentedPath('~/').expanduser()
         with target:
             target_cwd = AugmentedPath.cwd()
             distractor.chdir()
