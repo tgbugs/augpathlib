@@ -45,18 +45,18 @@ class TestMove(TestPathHelper, unittest.TestCase):
         self._test_move(source, target)
 
     def test_2_parent_moved(self):
-        source = 'e/f/g'
-        target = 'h/f/g'
+        source = 'ee/ff/gg'
+        target = 'hh/ff/gg'
         self._test_move(source, target)
 
     def test_3_parents_moved(self):
-        source = 'i/j/k'
-        target = 'l/m/k'
+        source = 'ii/jj/kk'
+        target = 'll/mm/kk'
         self._test_move(source, target)
 
     def test_4_all_moved(self):
-        source = 'n/o/p'
-        target = 'q/r/s'
+        source = 'nn/oo/pp'
+        target = 'qq/rr/ss'
         self._test_move(source, target)
 
     def test_5_onto_self(self):
@@ -65,8 +65,8 @@ class TestMove(TestPathHelper, unittest.TestCase):
         self._test_move(source, target)
 
     def test_6_onto_different(self):
-        source = 'a'
-        target = 't'
+        source = 'a.e'
+        target = 't.e'
         try:
             self._test_move(source, target)
             raise AssertionError('should have failed')
