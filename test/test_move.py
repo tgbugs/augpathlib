@@ -35,13 +35,13 @@ class TestMove(TestPathHelper, unittest.TestCase):
         assert t.cache.id == TestRemotePath.invAtTime(t, 2)
 
     def test_0_dir_moved(self):
-        source = 'a'
-        target = 'b'
+        source = 'a.e'
+        target = 'b.e'
         self._test_move(source, target)
 
     def test_1_file_moved(self):
-        source = 'c'
-        target = 'd'
+        source = 'c.e'
+        target = 'd.e'
         self._test_move(source, target)
 
     def test_2_parent_moved(self):
@@ -60,8 +60,8 @@ class TestMove(TestPathHelper, unittest.TestCase):
         self._test_move(source, target)
 
     def test_5_onto_self(self):
-        source = 't'
-        target = 't'
+        source = 't.e'
+        target = 't.e'
         self._test_move(source, target)
 
     def test_6_onto_different(self):

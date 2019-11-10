@@ -319,10 +319,13 @@ class ADSHelper(EatHelper):
         return namespace + '.' + key  # FIXME maybe include xattrs. as well ??
 
     def _stream(self, name):
-        # single letter file names with no extension
-        # masquerade as drive letters on windows so
-        # to be safe always use absolute for this
-        *start, last = self.absolute().parts
+        *start, last = self.parts
+        if not start and len(last) == 1:
+            # single letter file names with no extension
+            # masquerade as drive letters on windows and
+            # there seems to be nothing we can do about it
+            raise ValueError('windows a single letter file names dont get a long')
+
         return AugmentedPath(*start, last + ':' + name)
 
     @property
