@@ -1,11 +1,12 @@
 import os
 import pathlib
 import unittest
+from tempfile import gettempdir
 import pytest
 from augpathlib import RepoPath, LocalPath
 from .common import skipif_no_net
 
-testing_base = RepoPath(f'/tmp/.augpathlib-testing-base-{os.getpid()}')
+testing_base = RepoPath(gettempdir(), f'.augpathlib-testing-base-{os.getpid()}')
 
 
 class HybridPath(RepoPath, LocalPath):
