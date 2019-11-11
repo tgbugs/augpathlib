@@ -151,24 +151,24 @@ class TestPathHelper:
     @classmethod
     def setUpClass(cls):
         if cls.test_base.exists():
-            shutil.rmtree(cls.test_base)
+            shutil.rmtree(cls.test_base, onerror=onerror)
 
         cls.test_base.mkdir()
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.test_base)
+        shutil.rmtree(cls.test_base, onerror=onerror)
 
     def setUp(self, init_cache=True):
         if self.test_path.exists():  # in case something went wrong with a previous test
-            shutil.rmtree(self.test_path)
+            shutil.rmtree(self.test_path, onerror=onerror)
 
         self.test_path.mkdir()
         if init_cache:
             self.test_path.cache_init('0')
 
     def tearDown(self):
-        shutil.rmtree(self.test_path)
+        shutil.rmtree(self.test_path, onerror=onerror)
 
 
 TestPathHelper.test_base = test_base
