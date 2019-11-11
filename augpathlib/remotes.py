@@ -1,7 +1,7 @@
 import os
 import atexit
+import pathlib
 import subprocess
-from pathlib import PurePosixPath, PurePath
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib import caches, LocalPath
@@ -258,7 +258,7 @@ class RemotePath:
 
     def as_path(self):
         """ returns the relative path construction for the child so that local can make use of it """
-        return PurePosixPath(*self.parts)
+        return pathlib.PurePath(*self.parts)
 
     def _parts_relative_to(self, remote, cache_parent=None):
         parent_names = []  # FIXME massive inefficient due to retreading subpaths :/
@@ -404,7 +404,7 @@ class RemoteFactory:
         return classTypeInstance
 
 
-class SshRemoteFactory(RemoteFactory, PurePosixPath, RemotePath):
+class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
     """ Testing. To be used with ssh-agent.
         StuFiS The stupid file sync. """
 
@@ -417,18 +417,51 @@ class SshRemoteFactory(RemoteFactory, PurePosixPath, RemotePath):
     sysid = None
     _bind_sysid = classmethod(_bind_sysid_)
 
+    @classmethod
+    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        pos, win = cls._get_flavours()
+
+        if pos is None:
+            pos = type(f'{cls.__name__}Posix',
+                       (*pos_helpers, cls, pathlib.PurePosixPath), {})
+
+        if win is None:
+            win = type(f'{cls.__name__}Windows',
+                       (*win_helpers, cls, pathlib.PureWindowsPath), {})
+
+        cls.__abstractpath = cls
+        cls.__posixpath = pos
+        cls.__windowspath = win
+
+    @classmethod
+    def _get_flavours(cls):
+        pos, win = None, None
+        for subcls in cls.__subclasses__():  # direct only
+            if subcls._flavour is pathlib._posix_flavour:
+                pos = subcls
+            elif subcls._flavour is pathlib._windows_flavour:
+                win = subcls
+            else:
+                raise TypeError(f'unknown flavour for {cls} {cls._flavour}')
+
+        return pos, win
+
     def ___new__(cls, *args, **kwargs):
         # NOTE this should NOT be tagged as a classmethod
         # it is accessed at cls time already and tagging it
         # will cause it to bind to the original insource parent
-        _self = PurePosixPath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
+
+        if cls is cls.__abstractpath:
+            cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
+
+        _self = pathlib.PurePath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
         return _self
     
         # TODO this isn't quite working yet due to bootstrapping issues as usual
         if _self.id != cls._cache_anchor.id:
             self = _self.relative_to(_self.anchor)
         else:
-            self = PurePosixPath.__new__(cls, '.')  # FIXME make sure this is interpreted correctly ...
+            self = pathlib.PurePath.__new__(cls, '.')  # FIXME make sure this is interpreted correctly ...
 
         self._errors = []
         return self
@@ -447,20 +480,21 @@ class SshRemoteFactory(RemoteFactory, PurePosixPath, RemotePath):
         atexit.register(lambda:(session.sendeof(), session.close()))
         cache_class = cache_anchor.__class__
         newcls = super().__new__(cls, local_class, cache_class,
-                               host=host,
-                               session=session)
+                                 host=host,
+                                 session=session)
         newcls._uid, *newcls._gids = [int(i) for i in (newcls._ssh('echo $(id -u) $(id -G)')
                                                        .decode().split(' '))]
 
         newcls._cache_anchor = cache_anchor
         # must run before we can get the sysid, which is a bit odd
         # given that we don't actually sandbox the filesystem
+        newcls._bind_flavours()
         newcls._bind_sysid()
 
         return newcls
 
     def __init__(self, thing_with_id, cache=None):
-        if isinstance(thing_with_id, PurePath):
+        if isinstance(thing_with_id, pathlib.PurePath):
             thing_with_id = thing_with_id.as_posix()
 
         super().__init__(thing_with_id, cache=cache)
@@ -657,3 +691,6 @@ class SshRemoteFactory(RemoteFactory, PurePosixPath, RemotePath):
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.rpath!r}, host={self.host!r})'
+
+
+SshRemoteFactory._bind_flavours()

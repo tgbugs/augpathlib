@@ -20,6 +20,9 @@ SymlinkCache._local_class = AugmentedPath  # have to set a default
 class TestAugPath(unittest.TestCase):
 
     def setUp(self):
+        if not test_base.exists():
+            test_base.mkdir()
+
         self.test_link = AugmentedPath(test_base, 'evil-symlink')  # FIXME random needed ...
         if self.test_link.is_symlink():
             self.test_link.unlink()
@@ -38,7 +41,7 @@ class TestAugPath(unittest.TestCase):
             self.test_path.rmtree()
 
     def test_is_dir_symlink(self):
-        assert not test_link.is_dir()
+        assert not self.test_link.is_dir()
 
     def test_rmtree(self):
         self.test_path.mkdir()

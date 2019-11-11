@@ -3,7 +3,7 @@ Classes for storing and converting metadata associated with a path or path like 
 """
 import pickle
 import struct
-from pathlib import PurePosixPath
+from pathlib import PurePath
 from datetime import datetime
 from dateutil import parser as dateparser
 from terminaltables import AsciiTable
@@ -310,7 +310,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         id = self.encode('id', pathmeta.id)
 
-        return PurePosixPath(id + f'/.{self.write_version}.' + self.fieldsep.join(gen))
+        return PurePath(id + f'/.{self.write_version}.' + self.fieldsep.join(gen))
 
     def from_symlink(self, symlink_path):
         """ contextual portion to make sure something weird isn't going on
@@ -327,7 +327,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         order = self.versions[version]
         kwargs = {field:self.decode(field, value)
                   for field, value in zip(order, suffixes)}
-        path = PurePosixPath(*parts)
+        path = PurePath(*parts)
         kwargs['id'] = str(path.parent)
         return self.pathmetaclass(**kwargs)
 
