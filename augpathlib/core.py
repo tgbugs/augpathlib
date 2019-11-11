@@ -478,11 +478,11 @@ class AugmentedPath(pathlib.Path):
 
         if pos is None:
             pos = type(f'{cls.__name__}Posix',
-                       (*pos_helpers, cls, pathlib.PosixPath), {})
+                       (*pos_helpers, cls, AugmentedPathPosix), {})
 
         if win is None:
             win = type(f'{cls.__name__}Windows',
-                       (*win_helpers, cls, pathlib.WindowsPath), {})
+                       (*win_helpers, cls, AugmentedPathWindows), {})
 
         cls.__abstractpath = cls
         cls.__posixpath = pos
@@ -579,8 +579,7 @@ class AugmentedPath(pathlib.Path):
         if isinstance(link, bytes):  # on pypy3 readlink still returns bytes
             link = link.decode()
 
-        #log.debug(link)
-        return pathlib.PurePosixPath(link)
+        return pathlib.PurePath(link)
 
     def access(self, mode='read', follow_symlinks=True):
         """ types are 'read', 'write', and 'execute' """
@@ -726,8 +725,19 @@ class AugmentedPath(pathlib.Path):
             return m.digest()
 
 
+class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
 class AugmentedPathWindows(AugmentedPath, pathlib.WindowsPath):
     _registry_drives = 'hklm', 'hkcu', 'HKLM', 'HKCU'
+
+    if sys.version_info < (3, 8):
+        # https://bugs.python.org/issue34384
+        def readlink(self):
+            """ this returns the string of the link only due to cycle issues """
+            link = os.readlink(str(self))
+            if isinstance(link, bytes):  # on pypy3 readlink still returns bytes
+                link = link.decode()
+
+            return pathlib.PurePath(link)
 
 
 def splitroot(self, part, sep='\\'):
@@ -1200,7 +1210,7 @@ class XopenPath(AugmentedPath):
     pass
 
 
-class XopenWindowsPath(XopenPath, pathlib.WindowsPath):
+class XopenWindowsPath(XopenPath, AugmentedPathWindows):
     _command = 'start'
 
     def xopen(self):

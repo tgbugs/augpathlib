@@ -1,5 +1,7 @@
 from augpathlib.meta import PathMeta
 from augpathlib.core import (AugmentedPath,
+                             AugmentedPathPosix,
+                             AugmentedPathWindows,
                              RepoPath,
                              XopenPath,
                              LocalPath,
