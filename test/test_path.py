@@ -5,6 +5,7 @@ from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
 from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
 from .common import (log,
+                     onerror,
                      project_path,
                      temp_path,
                      test_base,
@@ -31,14 +32,14 @@ class TestAugPath(unittest.TestCase):
 
         self.test_path = AugmentedPath(test_base, 'aug-testpath')  # FIXME random needed ...
         if self.test_path.exists():
-            self.test_path.rmtree()
+            self.test_path.rmtree(onerror=onerror)
 
     def tearDown(self):
         if self.test_link.is_symlink():
             self.test_link.unlink()
 
         if self.test_path.exists():
-            self.test_path.rmtree()
+            self.test_path.rmtree(onerror=onerror)
 
     def test_is_dir_symlink(self):
         assert not self.test_link.is_dir()
@@ -50,17 +51,17 @@ class TestAugPath(unittest.TestCase):
         f = (self.test_path / 'other')
         f.touch()
         f.chmod(0o0000)
-        self.test_path.rmtree()
+        self.test_path.rmtree(onerror=onerror)
 
     def test_rmtree_ignore(self):
         try:
-            self.test_path.rmtree()
+            self.test_path.rmtree(onerror=onerror)
             raise AssertionError('should fail')
         except FileNotFoundError as e:
             pass
 
         # this doesn't test passing deeper ...
-        self.test_path.rmtree(ignore_errors=True)
+        self.test_path.rmtree(ignore_errors=True, onerror=onerror)
 
 
 class TestPathMeta(unittest.TestCase):

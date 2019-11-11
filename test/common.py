@@ -9,9 +9,12 @@ from augpathlib import LocalPath
 from augpathlib import PrimaryCache, RemotePath
 from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
+from augpathlib.utils import onerror_windows_readwrite_remove
 
 log = oa.utils.log.getChild('test')
 log.setLevel('DEBUG')
+
+onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
 
 this_file = LocalPath(__file__)
 temp_path = gettempdir()

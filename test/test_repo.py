@@ -3,8 +3,7 @@ import pathlib
 import unittest
 import pytest
 from augpathlib import RepoPath, LocalPath, exceptions as exc
-from augpathlib.utils import onerror_windows_readwrite_remove
-from .common import skipif_no_net, temp_path
+from .common import onerror, skipif_no_net, temp_path
 
 testing_base = RepoPath(temp_path, f'.augpathlib-testing-base-{os.getpid()}')
 
@@ -21,7 +20,6 @@ class TestRepoPath(unittest.TestCase):
         testing_base.mkdir()
 
     def tearDown(self):
-        onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
         LocalPath(testing_base).rmtree(onerror=onerror)
 
     def test_init(self):
@@ -70,7 +68,6 @@ class TestComplex(unittest.TestCase):
         self.test_file = self.hp / self.test_file
 
     def tearDown(self):
-        onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
         LocalPath(testing_base).rmtree(onerror=onerror)
 
     @pytest.mark.skip('TODO, commit not working yet')
