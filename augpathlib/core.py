@@ -576,11 +576,14 @@ class AugmentedPath(pathlib.Path):
                    'Alternately you might want to use absolute() in this situation instead?')
             raise RuntimeError(msg) from e
 
-    def readlink(self):
+    def readlink(self, raw=False):
         """ this returns the string of the link only due to cycle issues """
         link = os.readlink(self)
         if isinstance(link, bytes):  # on pypy3 readlink still returns bytes
             link = link.decode()
+
+        if raw:
+            return link
 
         return pathlib.PurePath(link)
 
@@ -736,11 +739,14 @@ class AugmentedPathWindows(AugmentedPath, pathlib.WindowsPath):
 
     if sys.version_info < (3, 8):
         # https://bugs.python.org/issue34384
-        def readlink(self):
+        def readlink(self, raw=False):
             """ this returns the string of the link only due to cycle issues """
             link = os.readlink(str(self))
             if isinstance(link, bytes):  # on pypy3 readlink still returns bytes
                 link = link.decode()
+
+            if raw:
+                return link
 
             return pathlib.PurePath(link)
 

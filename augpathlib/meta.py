@@ -315,7 +315,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
     def from_symlink(self, symlink_path):
         """ contextual portion to make sure something weird isn't going on
             e.g. that a link got switched to point to another name somehow """
-        pure_symlink = symlink_path.readlink()
+        raw_symlink = symlink_path.readlink(raw=True)
+        pure_symlink = pathlib.PurePosixPath(raw_symlink)
         name, *parts = pure_symlink.parts
         msg = (symlink_path.name, name)
         assert symlink_path.name == name, msg
