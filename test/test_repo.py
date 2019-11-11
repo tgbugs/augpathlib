@@ -2,7 +2,7 @@ import os
 import pathlib
 import unittest
 import pytest
-from augpathlib import RepoPath, LocalPath
+from augpathlib import RepoPath, LocalPath, exceptions as exc
 from .common import skipif_no_net, temp_path
 
 testing_base = RepoPath(temp_path, f'.augpathlib-testing-base-{os.getpid()}')
@@ -20,7 +20,8 @@ class TestRepoPath(unittest.TestCase):
         testing_base.mkdir()
 
     def tearDown(self):
-        LocalPath(testing_base).rmtree()
+        onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
+        LocalPath(testing_base).rmtree(onerror=onerror)
 
     def test_init(self):
         rp = testing_base / 'test-repo'
@@ -33,6 +34,19 @@ class TestRepoPath(unittest.TestCase):
 
         rp = testing_base.clone_path('https://github.com/tgbugs/augpathlib.git')
         assert rp.name == 'augpathlib', 'https form failed'
+
+        rp = testing_base.clone_path('~/git/augpathlib')
+        assert rp.name == 'augpathlib', 'local form failed'
+
+    def test_init_from_local_repo(self):
+        rp = testing_base / 'test-repo'
+        this_repo_path = RepoPath(__file__).working_dir
+        if this_repo_path is not None:
+            this_repo = this_repo_path.repo
+            repo = rp.init(this_repo_path, depth=1)
+            assert repo, f'{rp!r} {repo}'
+        else:
+            pytest.skip('not testing from inside a git repo')
 
     @skipif_no_net
     def test_init_with_remote(self):
@@ -55,7 +69,8 @@ class TestComplex(unittest.TestCase):
         self.test_file = self.hp / self.test_file
 
     def tearDown(self):
-        LocalPath(testing_base).rmtree()
+        onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
+        LocalPath(testing_base).rmtree(onerror=onerror)
 
     @pytest.mark.skip('TODO, commit not working yet')
     def test_commit(self):

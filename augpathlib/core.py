@@ -153,6 +153,9 @@ class RepoHelper:
                 raise exc.RepoExistsError(f'{repo}')
 
         if remote is not None:
+            if isinstance(remote, pathlib.Path):
+                remote = str(remote)
+
             repo = self._repo_class.clone_from(remote, self, depth=depth)
         else:
             repo = self._repo_class.init(self)

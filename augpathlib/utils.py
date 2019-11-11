@@ -1,4 +1,5 @@
 import os
+import stat
 import base64
 import hashlib
 import logging
@@ -27,6 +28,12 @@ default_cypher = hashlib.blake2b
 cypher_command_lookup = {hashlib.sha256:'sha256sum',
                          hashlib.blake2b:'b2sum'}
 red = '\x1b[31m{}\x1b[0m'  # use as red.format(value)
+
+
+def onerror_windows_readwrite_remove(action, name, exc):
+    """ helper for deleting readonly files on windows """
+    os.chmod(name, stat.S_IWRITE)
+    os.remove(name)
 
 
 def sysidpath(ignore_options=False, path_class=Path):
