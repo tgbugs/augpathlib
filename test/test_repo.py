@@ -3,7 +3,7 @@ import pathlib
 import unittest
 import pytest
 from augpathlib import RepoPath, LocalPath, exceptions as exc
-from authpathlib.utils import onerror_windows_readwrite_remove
+from augpathlib.utils import onerror_windows_readwrite_remove
 from .common import skipif_no_net, temp_path
 
 testing_base = RepoPath(temp_path, f'.augpathlib-testing-base-{os.getpid()}')
