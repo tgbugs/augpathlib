@@ -20,15 +20,22 @@ SymlinkCache._local_class = AugmentedPath  # have to set a default
 class TestAugPath(unittest.TestCase):
 
     def setUp(self):
-        self.test_link = AugmentedPath(temp_path, 'evil-symlink')  # FIXME random needed ...
+        self.test_link = AugmentedPath(test_base, 'evil-symlink')  # FIXME random needed ...
+        if self.test_link.is_symlink():
+            self.test_link.unlink()
+
         self.test_link.symlink_to('hello/there')
 
-        self.test_path = AugmentedPath(temp_path, 'testpath')  # FIXME random needed ...
+        self.test_path = AugmentedPath(test_base, 'aug-testpath')  # FIXME random needed ...
         if self.test_path.exists():
             self.test_path.rmtree()
 
     def tearDown(self):
-        self.test_link.unlink()
+        if self.test_link.is_symlink():
+            self.test_link.unlink()
+
+        if self.test_path.exists():
+            self.test_path.rmtree()
 
     def test_is_dir_symlink(self):
         assert not test_link.is_dir()
@@ -59,7 +66,7 @@ class TestPathMeta(unittest.TestCase):
     def setUp(self):
         self.path = TestLocalPath(project_path)
 
-        self.test_path = TestLocalPath(temp_path, 'testpath')  # FIXME random needed ...
+        self.test_path = TestLocalPath(test_base, 'testpath')  # FIXME random needed ...
         if self.test_path.is_symlink():
             self.test_path.unlink()
 
@@ -106,7 +113,7 @@ class TestPathMeta(unittest.TestCase):
         assert meta == new_meta, msg
 
     def _test_symlink_roundtrip_weird(self):
-        path = TestLocalPath(temp_path, 'testpath')  # FIXME random needed ...
+        path = TestLocalPath(test_base, 'testpath')  # FIXME random needed ...
         meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
         pure_symlink = PurePosixPath(path.name) / meta.as_symlink()
         path.symlink_to(pure_symlink)
