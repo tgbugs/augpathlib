@@ -409,26 +409,23 @@ class ADSHelper(EatHelper):
         with open(self._stream(name), 'rb') as f:
             return f.read()
 
-    def _xattrs(self, ns_length=0):
+    def _xattrs(self):
         out = {}
         for stream in self._streams:
-            maybe_k = stream.name
-            log.debug(maybe_k)
-            if maybe_k.startswith(namespace):
-                k = maybe_k[ns_length:]
-                with open(stream, 'rb') as f:
-                    v = f.read()
+            _base, k = stream.name.split(':', 1)
+            with open(stream, 'rb') as f:
+                v = f.read()
 
-                out[k] = v  # FIXME probably have to encode the keys for consistency
+            out[k] = v
 
         return out
 
     def xattrs(self, namespace=XATTR_DEFAULT_NS):
         # decode keys later
-        ns_length = len(namespace) + 1
+        ns_length_p1 = len(namespace) + 1
         try:
-            return self._xattrs(ns_length)
-
+            return {k[ns_length_p1:]:v for k, v in self._xattrs.items()
+                    if k.startswith(namespace)}
         except FileNotFoundError as e:
             raise FileNotFoundError(self) from e
 
