@@ -36,7 +36,7 @@ class TestMove(TestPathHelper, unittest.TestCase):
     def test_0_0_test_cache_local(self):
         c = self.test_path.cache
         assert hasattr(c, '_local_class')
-        assert hasattr(c, '_local')
+        assert c.local
 
     def test_0_dir_moved(self):
         source = 'a.e'

@@ -91,11 +91,10 @@ class CachePath(AugmentedPath):
                     self._in_bootstrap = self._cache_parent._in_bootstrap
 
                 if path.local is not None:  # this might be the very fist time local is called
-                    self._local = path.local
+                    pass  # we don't use self._local anymore too many issues
 
             elif isinstance(path, LocalPath):
-                self._local = path
-                path._cache = self
+                path._cache = self  # FIXME don't do this?
 
             elif isinstance(path, remotes.RemotePath):
                 #self._remote = path
@@ -115,7 +114,10 @@ class CachePath(AugmentedPath):
             self._meta_updater(meta)
         else:
             if self.meta is None:
-                delattr(self._local, '_cache')
+                if hasattr(self, '_local'):
+                    log.error('why does this code path still use self._local?')
+                    delattr(self._local, '_cache')
+
                 raise exc.NoCachedMetadataError(self.local)
 
         super().__init__()
