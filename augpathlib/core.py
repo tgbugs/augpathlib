@@ -624,7 +624,9 @@ class AugmentedPath(pathlib.Path):
         try:
             if self.is_dir():
                 for path in self.iterdir():
-                    path.rmtree(DANGERZONE=DANGERZONE)
+                    path.rmtree(ignore_errors=ignore_errors,
+                                onerror=onerror,
+                                DANGERZONE=DANGERZONE)
 
                 path = self
                 self.rmdir()

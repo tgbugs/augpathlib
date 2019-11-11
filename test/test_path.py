@@ -20,14 +20,37 @@ SymlinkCache._local_class = AugmentedPath  # have to set a default
 class TestAugPath(unittest.TestCase):
 
     def setUp(self):
-        self.test_path = AugmentedPath(temp_path, 'evil-symlink')  # FIXME random needed ...
-        self.test_path.symlink_to('hello/there')
+        self.test_link = AugmentedPath(temp_path, 'evil-symlink')  # FIXME random needed ...
+        self.test_link.symlink_to('hello/there')
+
+        self.test_path = AugmentedPath(temp_path, 'testpath')  # FIXME random needed ...
+        if self.test_path.exists():
+            self.test_path.rmtree()
 
     def tearDown(self):
-        self.test_path.unlink()
+        self.test_link.unlink()
 
     def test_is_dir_symlink(self):
-        assert not test_path.is_dir()
+        assert not test_link.is_dir()
+
+    def test_rmtree(self):
+        self.test_path.mkdir()
+        d = (self.test_path / 'heh')
+        d.mkdir()
+        f = (self.test_path / 'other')
+        f.touch()
+        f.chmod(0o0000)
+        self.test_path.rmtree()
+
+    def test_rmtree_ignore(self):
+        try:
+            self.test_path.rmtree()
+            raise AssertionError('should fail')
+        except FileNotFoundError as e:
+            pass
+
+        # this doesn't test passing deeper ...
+        self.test_path.rmtree(ignore_errors=True)
 
 
 class TestPathMeta(unittest.TestCase):
