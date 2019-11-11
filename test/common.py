@@ -3,7 +3,7 @@ import shutil
 import pathlib
 from tempfile import gettempdir
 import pytest
-import augpathlib as oa
+import augpathlib as aug
 from augpathlib import exceptions as exc
 from augpathlib import LocalPath
 from augpathlib import PrimaryCache, RemotePath
@@ -11,13 +11,13 @@ from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
 from augpathlib.utils import onerror_windows_readwrite_remove
 
-log = oa.utils.log.getChild('test')
+log = aug.utils.log.getChild('test')
 log.setLevel('DEBUG')
 
 onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
 
 this_file = LocalPath(__file__)
-temp_path = gettempdir()
+temp_path = aug.AugmentedPath(gettempdir(), f'.augpathlib-testing-base-{os.getpid()}')
 project_path = this_file.parent / 'test_local/test_project'
 
 SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or

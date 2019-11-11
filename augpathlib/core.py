@@ -397,6 +397,9 @@ class ADSHelper(EatHelper):
 
         name = self._key_convention(key, namespace)
         stream = self._stream(name)
+        log.debug(name)
+        log.debug(stream)
+        log.debug(bytes_value)
         with open(stream, 'wb') as f:
             f.write(bytes_value)
 

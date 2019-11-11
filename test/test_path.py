@@ -93,6 +93,8 @@ class TestACachePath(unittest.TestCase):
             shutil.rmtree(test_path, onerror=onerror)
 
         test_path.mkdir()
+        assert test_path.exists()
+        assert test_path.is_dir()
         test_path.cache_init('0')
         assert test_path.cache
         assert test_path.cache.meta

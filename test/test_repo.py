@@ -5,7 +5,7 @@ import pytest
 from augpathlib import RepoPath, LocalPath, exceptions as exc
 from .common import onerror, skipif_no_net, temp_path
 
-testing_base = RepoPath(temp_path, f'.augpathlib-testing-base-{os.getpid()}')
+testing_base = RepoPath(temp_path)
 
 
 class HybridPath(RepoPath, LocalPath):
