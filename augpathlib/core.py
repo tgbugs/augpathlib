@@ -369,19 +369,15 @@ class ADSHelper(EatHelper):
 
             if file_infos.cStreamName:
                 streampath = file_infos.cStreamName
-                if ':$DATA' not in streampath:
-                    yield AugmentedPath(streampath)
-                #streamname = file_infos.cStreamName.split(":")[1]
-                #if streamname:
-                    #streamlist.append(streamname)
+                if '::$DATA' not in streampath:
+                    cleaned, _data_suffix = streampath.strip(':').rsplit(':$', 1)
+                    yield self._stream(cleaned)
 
                 while pyads.kernel32.FindNextStreamW(p, pyads.byref(file_infos)):
                     streampath = file_infos.cStreamName
-                    if ':$DATA' not in streampath:
-                        yield AugmentedPath(streampath)
-                    #streamlist.append(file_infos.cStreamName.split(":")[1])
-
-            #return streamlist
+                    if '::$DATA' not in streampath:
+                        cleaned, _data_suffix = streampath.strip(':').rsplit(':$', 1)
+                        yield self._stream(cleaned)
 
         finally:
             pyads.kernel32.FindClose(p)  # Close the handle
@@ -410,24 +406,28 @@ class ADSHelper(EatHelper):
     def getxattr(self, key, namespace=XATTR_DEFAULT_NS):
         # we don't deal with types here, we just act as a dumb store
         name = self._key_convention(key, namespace)
-        with open(self._stream(name), 'wb') as f:
-            return f.read(bytes_value)
+        with open(self._stream(name), 'rb') as f:
+            return f.read()
+
+    def _xattrs(self, ns_length=0):
+        out = {}
+        for stream in self._streams:
+            maybe_k = stream.name
+            log.debug(maybe_k)
+            if maybe_k.startswith(namespace):
+                k = maybe_k[ns_length:]
+                with open(stream, 'rb') as f:
+                    v = f.read()
+
+                out[k] = v  # FIXME probably have to encode the keys for consistency
+
+        return out
 
     def xattrs(self, namespace=XATTR_DEFAULT_NS):
         # decode keys later
-        lnp1 = len(namespace) + 1
+        ns_length = len(namespace) + 1
         try:
-            out = {}
-            for stream in self._streams:
-                maybe_k = stream.name
-                if maybe_k.startswith(namespace):
-                    k = maybe_k[lnp1:]
-                    with open(stream, 'rb') as f:
-                        v = f.read()
-
-                    out[k] = v  # FIXME probably have to encode the keys for consistency
-
-            return out
+            return self._xattrs(ns_length)
 
         except FileNotFoundError as e:
             raise FileNotFoundError(self) from e

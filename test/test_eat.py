@@ -1,4 +1,6 @@
+import os
 import unittest
+import pytest
 import augpathlib as aug
 from .common import test_base, onerror
 
@@ -32,6 +34,20 @@ class TestEat(unittest.TestCase):
     def tearDown(self):
         self.dir.rmtree(onerror=onerror)
         self.file.unlink()
+
+    @pytest.mark.skipif(os.name != 'nt', reason='This ADS behavior is windows only')
+    def test_dir_simple(self):
+        stream = self.dir._stream('wat')
+        tv = b'wat-value'
+        with open(stream, 'wb') as f:
+            f.write(tv)
+
+        with open(stream, 'rb') as f:
+            test = f.read()
+
+        assert test == tv
+        streams = list(self.dir._streams)
+        assert streams
 
     def test_dir(self):
         self.dir.setxattr('key', b'value')
