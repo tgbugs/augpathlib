@@ -17,7 +17,8 @@ HybridPath._bind_flavours()
 
 class TestRepoPath(unittest.TestCase):
     def setUp(self):
-        testing_base.mkdir()
+        if not testing_base.exists():
+            testing_base.mkdir()
 
     def tearDown(self):
         LocalPath(testing_base).rmtree(onerror=onerror)

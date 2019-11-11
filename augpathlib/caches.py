@@ -12,7 +12,7 @@ class CachePath(AugmentedPath):
     """ Local data about remote objects.
         This is where the mapping between the local id (aka path)
         and the remote id lives. In a git-like world this is the
-        cache/index/whatever we call it these days 
+        cache/index/whatever we call it these days
 
         This is the bridge class that holds the mappings.
         Always start bootstrapping from one of these classes
@@ -328,7 +328,7 @@ class CachePath(AugmentedPath):
                         # otherwise consumers of bootstrap will
                         # think the file may have been deleted
                         continue
-                    
+
                 cc = child.cache_init()
 
             yield cc
@@ -386,7 +386,7 @@ class CachePath(AugmentedPath):
                 log.critical(msg)
 
         elif meta.checksum:
-            lc = self.local.meta.checksum 
+            lc = self.local.meta.checksum
             cc = self.meta.checksum
             if lc != cc:
                 msg = f'Checksums do not match!\n(!=\n{lc}\n{cc}\n)'
@@ -441,7 +441,7 @@ class CachePath(AugmentedPath):
     def local(self):
         local = self.local_class(self)
         if self.is_helper_cache:
-            cache = self._cache_parent 
+            cache = self._cache_parent
         else:
             cache = self
 
@@ -695,7 +695,8 @@ class CachePath(AugmentedPath):
 
             target.parent.mkdir_cache(remote)
 
-        if not isinstance(target, self.__class__):
+        do_cast = not isinstance(target, self.__class__)
+        if do_cast:
             target = self.__class__(target, meta=meta)
 
         if target.exists() or target.is_broken_symlink():
@@ -709,6 +710,14 @@ class CachePath(AugmentedPath):
                     if file_is_different:
                         log.critical('DO SOMETHING ABOUT THIS STALE DATA'
                                      f'\n{target}\n{target.meta.as_pretty()}')
+
+                elif do_cast:
+                    # the target meta was just put there, if the ids match it should be ok
+                    # however since arbitrary meta can be passed in, best to double check
+                    file_is_different = target._meta_updater(self.meta)
+                    if file_is_different:
+                        log.critical('Something has gone wrong'
+                                     f'\n{target}\n{target.meta.as_pretty()}')
                 else:
                     # directory moves that are resolved during pull
                     log.warning(f'what is this!?\n{target}\n{self}')
@@ -719,7 +728,19 @@ class CachePath(AugmentedPath):
                 raise exc.PathExistsError(f'Target {target} already exists!')
 
         if self.exists():
-            self.rename(target)  # if target is_dir then this will fail, which is ok
+            safe_unlink = target.local.parent / f'.unlink-{target.name}'
+            try:
+                if target.is_broken_symlink():
+                    target.rename(safe_unlink)
+
+                self.rename(target)  # if target is_dir then this will fail, which is ok
+            except BaseException as e:
+                log.exception(e)
+                if safe_unlink.is_broken_symlink():
+                    safe_unlink.rename(target)
+            finally:
+                if safe_unlink.is_broken_symlink():
+                    safe_unlink.unlink()
 
         elif self.is_broken_symlink():
             # we don't move to trash here because this was just a file rename
@@ -860,7 +881,7 @@ class SymlinkCache(CachePath):
                         log.info(msg.format(pathmeta_newer))
                         # THIS IS EXPLICITLY ALLOWED
                     else:  # they are equal
-                        extra = 'Both updated at the same time ' 
+                        extra = 'Both updated at the same time '
                         if meta.created is not None and pathmeta.created is not None:
                             if meta.created > pathmeta.created:
                                 log.info(msg.format(extra + meta_newer))

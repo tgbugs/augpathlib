@@ -193,24 +193,27 @@ class TestPrefixEvil(TestPathMeta):
 
 
 class TestContext(unittest.TestCase):
+    def setUp(self):
+        if not temp_path.exists():
+            temp_path.mkdir()
+
+    def tearDown(self):
+        temp_path.rmtree(onerror=onerror)
+
     def test_context(self):
         start = AugmentedPath.cwd()
         target = AugmentedPath(temp_path)
         distractor = AugmentedPath('~/').expanduser()
+        assert temp_path.is_dir()
         with target:
             target_cwd = AugmentedPath.cwd()
             distractor.chdir()
             distractor_cwd = AugmentedPath.cwd()
 
         end = AugmentedPath.cwd()
-        eq = (
-            (target, target_cwd),
-            (distractor, distractor_cwd),
-            (start, end),
-        )
-
-        bads = [(a, b) for a, b in eq if a != b]
-        assert not bads, bads
+        assert target == target_cwd, 'with target: failed'
+        assert distractor == distractor_cwd, 'distractor cwd failed'
+        assert start == end, 'it would seem that the distractor got us'
         assert start != target != distractor
 
 

@@ -424,7 +424,8 @@ class ADSHelper(EatHelper):
         # decode keys later
         ns_length_p1 = len(namespace) + 1
         try:
-            return {k[ns_length_p1:]:v for k, v in self._xattrs.items()
+            # we encode here to match the behavior of the posix version
+            return {k[ns_length_p1:].encode():v for k, v in self._xattrs().items()
                     if k.startswith(namespace)}
         except FileNotFoundError as e:
             raise FileNotFoundError(self) from e
