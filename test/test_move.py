@@ -1,4 +1,3 @@
-import shutil
 import unittest
 from augpathlib import exceptions as exc
 from .common import TestPathHelper, TestLocalPath, TestCachePath, TestRemotePath
@@ -33,6 +32,11 @@ class TestMove(TestPathHelper, unittest.TestCase):
         log.debug(f'{source} -> {target} {cache.meta} {meta}')
         cache.move(target=t, meta=meta)
         assert t.cache.id == TestRemotePath.invAtTime(t, 2)
+
+    def test_0_0_test_cache_local(self):
+        c = self.test_path.cache
+        assert hasattr(c, '_local_class')
+        assert hasattr(c, '_local')
 
     def test_0_dir_moved(self):
         source = 'a.e'
