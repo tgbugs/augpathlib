@@ -144,7 +144,10 @@ TestRemotePath._cache_class = TestCachePath
 # set up testing anchor (must come after the hierarchy)
 TestCachePath.anchor = test_path
 # note: the this creates a symlink which the rests of the tests expect
+if test_path.exists():
+    test_path.rmtree(onerror=onerror)
 TestCachePath.anchor = TestCachePath(test_path, meta=PathMeta(id='0'))
+test_path.unlink()
 
 
 class TestPathHelper:

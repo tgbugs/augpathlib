@@ -64,6 +64,31 @@ class TestAugPath(unittest.TestCase):
         self.test_path.rmtree(ignore_errors=True, onerror=onerror)
 
 
+class TestACachePath(unittest.TestCase):
+    def setUp(self):
+        if test_path.is_symlink():
+            test_path.unlink()
+
+        if test_path.exists() and test_path.is_dir():
+            test_path.rmdir()
+
+    def test_0_exists(self):
+        log.debug(TestCachePath.anchor)
+        assert not TestCachePath.anchor.is_symlink()
+        assert TestCachePath.anchor.meta is None
+
+    def test_1_create(self):
+        wat = TestCachePath(test_path, meta=PathMeta(id='0'))
+        log.debug(wat)
+        assert wat.meta
+
+    def test_2_create_dir(self):
+        test_path.mkdir()
+        wat = TestCachePath(test_path, meta=PathMeta(id='0'))
+        log.debug(wat)
+        assert wat.meta
+
+
 class TestPathMeta(unittest.TestCase):
     prefix = None
 
@@ -172,7 +197,7 @@ class TestContext(unittest.TestCase):
             (distractor, distractor_cwd),
             (start, end),
         )
-        
+
         bads = [(a, b) for a, b in eq if a != b]
         assert not bads, bads
         assert start != target != distractor
