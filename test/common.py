@@ -11,8 +11,8 @@ from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
 from augpathlib.utils import onerror_windows_readwrite_remove
 
+aug.utils.log.setLevel('DEBUG')
 log = aug.utils.log.getChild('test')
-log.setLevel('DEBUG')
 
 onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
 
