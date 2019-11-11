@@ -130,8 +130,8 @@ class CachePath(AugmentedPath):
 
     @property
     def trash(self):
+        raise NotImplementedError('implement in subclasses')
         # FIXME mkdir and put it in a more conventional location
-        return self.anchor.local.parent / '.trash'
 
     def crumple(self):  # FIXME change name to something more obvious ...
         trashed = self.trash / f'{self.parent.id}-{self.id}-{self.name}'
