@@ -4,7 +4,8 @@ from augpathlib import AugmentedPath, LocalPath
 from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
 from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
-from .common import (project_path,
+from .common import (log,
+                     project_path,
                      temp_path,
                      test_base,
                      test_path,
@@ -14,6 +15,19 @@ from .common import (project_path,
                      TestRemotePath)
 
 SymlinkCache._local_class = AugmentedPath  # have to set a default
+
+
+class TestAugPath(unittest.TestCase):
+
+    def setUp(self):
+        self.test_path = AugmentedPath(temp_path, 'evil-symlink')  # FIXME random needed ...
+        self.test_path.symlink_to('hello/there')
+
+    def tearDown(self):
+        self.test_path.unlink()
+
+    def test_is_dir_symlink(self):
+        assert not test_path.is_dir()
 
 
 class TestPathMeta(unittest.TestCase):
@@ -42,7 +56,7 @@ class TestPathMeta(unittest.TestCase):
         # TODO __kwargs ...
         pm = self.path.meta
         xattrs = pm.as_xattrs(self.prefix)
-        print(xattrs)
+        log.debug(xattrs)
         # FIXME actually write these to disk as well?
         new_pm = PathMeta.from_xattrs(xattrs, self.prefix)
         msg = '\n'.join([f'{k!r} {v!r} {getattr(new_pm, k)!r}' for k, v in pm.items()])
@@ -88,7 +102,7 @@ class TestPathMeta(unittest.TestCase):
         bads = []
         for pm in (lpm, bpm):
             symlink = pm.as_symlink()
-            print(symlink)
+            log.debug(symlink)
             new_pm = pmas.from_parts(symlink.parts)
             #corrected_new_pm = PurePosixPath()
             if new_pm != pm:

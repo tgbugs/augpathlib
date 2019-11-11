@@ -13,14 +13,6 @@ try:
 except ImportError:
     pass
 
-if os.name != 'nt':
-    import xattr
-    XATTR_DEFAULT_NS = xattr.NS_USER
-else:
-    import winreg
-    from augpathlib import pyads
-    XATTR_DEFAULT_NS = 'user'
-
 #import psutil  # import for experimental xopen functionality
 from git import Repo
 from dateutil import parser
@@ -32,10 +24,24 @@ from augpathlib.utils import log, default_cypher, StatResult, etag
 from augpathlib.utils import _bind_sysid_
 
 _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
+_IGNORED_WINERRORS = (
+    123,  # 'The filename, directory name, or volume label syntax is incorrect' -> 22 EINVAL
+)
 
 
-def _ignore_error(exception):
-    return (getattr(exception, 'errno', None) in _IGNORED_ERROS)
+if os.name != 'nt':
+    import xattr
+    XATTR_DEFAULT_NS = xattr.NS_USER
+    def _ignore_error(exception):
+        return (getattr(exception, 'errno', None) in _IGNORED_ERROS)
+
+else:
+    import winreg
+    from augpathlib import pyads
+    XATTR_DEFAULT_NS = 'user'
+    def _ignore_error(exception):
+        return ((getattr(exception, 'winerror', None) in _IGNORED_WINERRORS) or
+                (getattr(exception, 'errno', None) in _IGNORED_ERROS))
 
 
 if sys.version_info >= (3, 7):
@@ -360,14 +366,16 @@ class ADSHelper(EatHelper):
 
             if file_infos.cStreamName:
                 streampath = file_infos.cStreamName
-                yield self.__class__(streampath)
+                if ':$DATA' not in streampath:
+                    yield AugmentedPath(streampath)
                 #streamname = file_infos.cStreamName.split(":")[1]
                 #if streamname:
                     #streamlist.append(streamname)
 
                 while pyads.kernel32.FindNextStreamW(p, pyads.byref(file_infos)):
                     streampath = file_infos.cStreamName
-                    yield self.__class__(streampath)
+                    if ':$DATA' not in streampath:
+                        yield AugmentedPath(streampath)
                     #streamlist.append(file_infos.cStreamName.split(":")[1])
 
             #return streamlist
@@ -776,8 +784,6 @@ pathlib._WindowsFlavour.drive_letters.update(AugmentedPathWindows._registry_driv
 pathlib._WindowsFlavour.splitroot = splitroot
 pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
 
-
-class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
 AugmentedPath._bind_flavours()
 
 

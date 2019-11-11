@@ -3,11 +3,15 @@ import shutil
 import pathlib
 from tempfile import gettempdir
 import pytest
+import augpathlib as oa
 from augpathlib import exceptions as exc
 from augpathlib import LocalPath
 from augpathlib import PrimaryCache, RemotePath
 from augpathlib import EatCache, SymlinkCache
 from augpathlib import PathMeta
+
+log = oa.utils.log.getChild('test')
+log.setLevel('DEBUG')
 
 this_file = LocalPath(__file__)
 temp_path = gettempdir()
@@ -136,6 +140,7 @@ TestRemotePath._cache_class = TestCachePath
 
 # set up testing anchor (must come after the hierarchy)
 TestCachePath.anchor = test_path
+# note: the this creates a symlink which the rests of the tests expect
 TestCachePath.anchor = TestCachePath(test_path, meta=PathMeta(id='0'))
 
 

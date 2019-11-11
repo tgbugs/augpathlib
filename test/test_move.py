@@ -1,8 +1,8 @@
 import shutil
 import unittest
 from augpathlib import exceptions as exc
-from .common import TestPathHelper
-from .common import TestLocalPath, TestCachePath, TestRemotePath
+from .common import TestPathHelper, TestLocalPath, TestCachePath, TestRemotePath
+from .common import log
 
 
 class TestMove(TestPathHelper, unittest.TestCase):
@@ -30,7 +30,7 @@ class TestMove(TestPathHelper, unittest.TestCase):
 
         cache = caches[-1]
         meta = t.metaAtTime(2)
-        print(f'{source} -> {target} {cache.meta} {meta}')
+        log.debug(f'{source} -> {target} {cache.meta} {meta}')
         cache.move(target=t, meta=meta)
         assert t.cache.id == TestRemotePath.invAtTime(t, 2)
 
