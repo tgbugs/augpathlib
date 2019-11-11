@@ -174,5 +174,5 @@ class TestPathHelper:
         shutil.rmtree(self.test_path, onerror=onerror)
 
 
-TestPathHelper.test_base = test_base
-TestPathHelper.test_path = test_path
+TestPathHelper.test_base = test_base  # there are here to prevent
+TestPathHelper.test_path = test_path  # pytest from discovering them

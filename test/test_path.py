@@ -88,6 +88,15 @@ class TestACachePath(unittest.TestCase):
         log.debug(wat)
         assert wat.meta
 
+    def test_cache_init_dir(self):
+        if test_path.exists():  # in case something went wrong with a previous test
+            shutil.rmtree(test_path, onerror=onerror)
+
+        test_path.mkdir()
+        test_path.cache_init('0')
+        assert test_path.cache
+        assert test_path.cache.meta
+
 
 class TestPathMeta(unittest.TestCase):
     prefix = None
