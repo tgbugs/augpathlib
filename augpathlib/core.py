@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import pathlib
 import mimetypes
 import subprocess
@@ -732,6 +733,18 @@ class AugmentedPath(pathlib.Path):
                 m.update(chunk)
 
             return m.digest()
+
+    def copy_to(self, target, force=False):
+        """ copy from a the current path object to a target path """
+        if not target.exists() and not target.is_symlink() or force:
+            shutil.copy2(self, target)
+
+        else:
+            raise exc.PathExistsError(f'{target}')
+
+    def copy_from(self, source, force=False, copy_cache_meta=False):
+        """ copy from a source path to the current path object """
+        source.copy_to(self, force=force)
 
 
 class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
