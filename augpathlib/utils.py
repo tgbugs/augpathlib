@@ -62,7 +62,7 @@ def sysidpath(ignore_options=False, path_class=Path):
                     return option
 
     uuid = uuid4()
-    with failover.open('wt') as f:
+    with open(failover, 'wt') as f:
         f.write(uuid.hex)
 
     return failover

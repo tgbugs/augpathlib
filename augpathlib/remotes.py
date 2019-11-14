@@ -1,11 +1,12 @@
 import os
+import sys
 import atexit
 import pathlib
 import subprocess
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib import caches, LocalPath
-from augpathlib.utils import _bind_sysid_, StatResult, cypher_command_lookup
+from augpathlib.utils import _bind_sysid_, StatResult, cypher_command_lookup, log
 if os.name != 'nt':
     # pexpect on windows does not support pxssh
     # because it is missing spawn
@@ -455,6 +456,7 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
             cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
 
         _self = pathlib.PurePath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
+        _self.remote_platform = _self._remote_platform
         return _self
     
         # TODO this isn't quite working yet due to bootstrapping issues as usual
@@ -598,6 +600,11 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         return out
 
     @property
+    def _remote_platform(self):
+        remote_cmd = "uname -a | awk '{ print tolower($1) }'"
+        return self._ssh(remote_cmd).decode(self.encoding)
+
+    @property
     def cypher_command(self):
         # this one is a little backwards, because we can control
         # whatever cypher we want, unlike in other cases
@@ -607,7 +614,13 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         remote_cmd = (f'{self.cypher_command} {self.rpath} | '
                       'awk \'{ print $1 }\';')
 
-        return bytes.fromhex(self._ssh(remote_cmd).decode(self.encoding))
+        hex_ = self._ssh(remote_cmd).decode(self.encoding)
+        log.debug(hex_)
+        return bytes.fromhex(hex_)
+
+    @property
+    def _stat_cmd(self):
+        return 'gstat' if self.remote_platform == 'darwin' else 'stat'
 
     def stat(self):
         remote_cmd = f'stat "{self.rpath}" -c {StatResult.stat_format}'
@@ -654,12 +667,12 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         return self.__class__(self.cache.parent)  # FIXME not right ...
 
     def is_dir(self):
-        remote_cmd = f'stat -c %F {self.rpath}'
+        remote_cmd = f'{self._stat_cmd} -c %F {self.rpath}'
         out = self._ssh(remote_cmd)
         return out == b'directory'
 
     def is_file(self):
-        remote_cmd = f'stat -c %F {self.rpath}'
+        remote_cmd = f'{self._stat_cmd} -c %F {self.rpath}'
         out = self._ssh(remote_cmd)
         return out == b'regular file'
 
@@ -673,7 +686,7 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         if self.is_dir():
             # no children if it is a file sadly
             remote_cmd = (f"cd {self.rpath};"
-                          f"stat -c {StatResult.stat_format} {{.,}}*;"
+                          f"{self._stat_cmd} -c {StatResult.stat_format} {{.,}}*;"
                           "echo '----';"
                           f"{self.cypher_command} {{.,}}*;"  # FIXME fails on directories destroying alignment
                           'cd "${OLDPWD}"')
