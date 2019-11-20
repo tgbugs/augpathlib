@@ -213,7 +213,9 @@ class RepoHelper:
 
     def _remote_uri(self, prefix, infix=None, ref=None):
         repo = self.repo
-        url_base = next(repo.remote().urls)
+        remote = repo.remote()
+        rnprefix = remote.name + '/'
+        url_base = next(remote.urls)
         if url_base.startswith('git@'):
             url_base = 'ssh://' + url_base
 
@@ -228,7 +230,8 @@ class RepoHelper:
         if netloc == 'github.com':
             if not ref or ref == 'HEAD':
                 ref = repo.active_branch.name
-            elif ref not in [r.name.replace(rnprefix, '') for r in repo.refs]:
+            elif (ref not in [r.name.replace(rnprefix, '') for r in repo.refs] and
+                  ref not in [c.hexsha for c in repo.iter_commits(ref, max_count=1)]):
                 log.warning(f'unknown ref {ref}')
 
             if infix is not None:
@@ -247,7 +250,10 @@ class RepoHelper:
 
     @property
     def latest_commit(self):
-        return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
+        try:
+            return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
+        except StopIteration as e:
+            raise exc.NoCommitsForFile(self) from e
 
     # a variety of change detection
 

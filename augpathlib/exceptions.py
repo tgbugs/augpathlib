@@ -103,3 +103,7 @@ class RepoExistsError(AugPathlibError):
 class NotInRepoError(AugPathlibError):
     """ a repository does not exist in this
         or any of the parents of this path """
+
+
+class NoCommitsForFile(AugPathlibError):
+    """ could not find any commits for file """
