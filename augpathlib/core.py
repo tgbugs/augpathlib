@@ -6,6 +6,7 @@ import mimetypes
 import subprocess
 from time import sleep
 from errno import ELOOP, ENOENT, ENOTDIR, EBADF
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from functools import wraps
 from itertools import chain
@@ -209,6 +210,40 @@ class RepoHelper:
                 path = self
 
             return path.relative_to(repo.working_dir)
+
+    def _remote_uri(self, prefix, infix=None, ref=None):
+        repo = self.repo
+        url_base = next(repo.remote().urls)
+        if url_base.startswith('git@'):
+            url_base = 'ssh://' + url_base
+
+        pu = urlparse(url_base)
+        netloc = pu.netloc
+        path = pu.path
+        if netloc.startswith('git@github.com'):
+            _, group = netloc.split(':')
+            netloc = 'github.com'
+            path = '/' + group + path
+
+        if netloc == 'github.com':
+            if not ref or ref == 'HEAD':
+                ref = repo.active_branch.name
+            elif ref not in [r.name.replace(rnprefix, '') for r in repo.refs]:
+                log.warning(f'unknown ref {ref}')
+
+            if infix is not None:
+                rpath = pathlib.PurePosixPath(path).with_suffix('') / infix / ref / self.repo_relative_path
+            else:
+                rpath = pathlib.PurePosixPath(path).with_suffix('') / ref / self.repo_relative_path
+            return prefix + rpath.as_posix()
+        else:
+            raise NotImplementedError(url_base)
+
+    def remote_uri_human(self, ref=None):
+        return self._remote_uri('https://github.com', infix='blob', ref=ref)
+
+    def remote_uri_machine(self, ref=None):
+        return self._remote_uri('https://raw.githubusercontent.com', ref=ref)
 
     @property
     def latest_commit(self):
