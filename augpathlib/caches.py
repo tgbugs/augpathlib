@@ -680,22 +680,23 @@ class CachePath(AugmentedPath):
             return target
 
         common = self.commonpath(target).absolute()
+        target_parent = target.parent.absolute()
         parent = self.parent.absolute()
 
-        assert target.name != self.name or common != parent
+        assert target.name != self.name or target_parent != parent
 
-        if common != parent:
+        if target_parent != parent:
             _id = remote.id if remote else meta.id
             log.warning('A parent of current file has changed location!\n'
                         f'{common}\n{self.relative_to(common)}\n'
                         f'{target.relative_to(common)}\n{_id}')
 
 
-        if not target.parent.exists():
+        if not target_parent.exists():
             if remote is None:  # we have to have a remote to pull parent structure
                 remote = self._remote_class(meta)
 
-            target.parent.mkdir_cache(remote)
+            target_parent.mkdir_cache(remote)
 
         do_cast = not isinstance(target, self.__class__)
         if do_cast:
