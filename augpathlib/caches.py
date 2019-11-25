@@ -287,6 +287,9 @@ class CachePath(AugmentedPath):
         rcs = sname(self.remote._rchildren(create_cache=False))
         local_paths = list(self.local.rchildren)
         local_files = set(p for p in local_paths if p.is_file() or p.is_broken_symlink())
+        file_index = {f.cache.id:f for f in local_files}  # FIXME WARNING can get big
+        # FIXME have to compute file_index here because for some reason
+        # computing local_dirs will remove folders entirely !??
         local_dirs = set(p.relative_to(self.anchor) for p in local_paths if p.is_dir())
         if local_dirs:
             remote_dirs = set(c for c in rcs if c.is_dir())
@@ -305,7 +308,6 @@ class CachePath(AugmentedPath):
                                     if not ld.as_posix().startswith(d.as_posix()))
                     old_local = local_dirs - rd
 
-        file_index = {f.cache.id:f for f in local_files}  # FIXME WARNING can get big
         for child in sorted(rcs, key=lambda c: len(c.as_path().as_posix())):
             # use the remote's recursive implementation
             # not the local implementation, since the
