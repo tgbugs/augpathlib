@@ -1273,10 +1273,14 @@ RepoPath._bind_flavours()
 
 
 class XopenPath(AugmentedPath):
-    pass
+    @classmethod
+    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        pos_helpers = pos_helpers + (XopenPosixHelper,)
+        win_helpers = win_helpers + (XopenWindowsHelper,)
+        super()._bind_flavours(pos_helpers, win_helpers)
 
 
-class XopenWindowsPath(XopenPath, AugmentedPathWindows):
+class XopenWindowsHelper:
     _command = 'start'
 
     def xopen(self):
@@ -1286,7 +1290,7 @@ class XopenWindowsPath(XopenPath, AugmentedPathWindows):
                                    stderr=subprocess.STDOUT)
 
 
-class XopenPosixPath(XopenPath, pathlib.PosixPath):
+class XopenPosixHelper:
     _command = 'open' if sys.platform == 'darwin' else 'xdg-open'
 
     def xopen(self):
