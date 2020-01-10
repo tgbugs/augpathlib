@@ -14,6 +14,19 @@ from augpathlib.caches import (CachePath,
 from augpathlib.remotes import RemotePath
 from augpathlib.utils import StatResult, FileSize, etag
 
+try:
+    from augpathlib.repo import RepoHelper, RepoPath
+except ImportError as e:
+    class RepoHelper:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f'{self.__class__.__name__} could not be imported '
+                              'due to a previous ImportError') from e
+
+
+    class RepoPath(RepoHelper):
+        pass
+
+
 __all__ = [
     'StatResult',
     'FileSize',
@@ -36,18 +49,5 @@ __all__ = [
 
     'RemotePath',
 ]
-
-try:
-    from augpathlib.repo import RepoHelper, RepoPath
-except ImportError as e:
-    class RepoHelper:
-        def __init__(self, *args, **kwargs):
-            raise ImportError(f'{self.__class__.__name__} could not be imported '
-                              'due to a previous ImportError') from e
-
-
-    class RepoPath(RepoHelper):
-        pass
-
 
 __version__ = '0.0.5'
