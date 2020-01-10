@@ -2,11 +2,9 @@ from augpathlib.meta import PathMeta
 from augpathlib.core import (AugmentedPath,
                              AugmentedPathPosix,
                              AugmentedPathWindows,
-                             RepoPath,
                              XopenPath,
                              LocalPath,
-                             EatHelper,
-                             RepoHelper)
+                             EatHelper)
 from augpathlib.caches import (CachePath,
                                PrimaryCache,
                                SqliteCache,
@@ -25,7 +23,6 @@ __all__ = [
 
     'AugmentedPath',
     'XattrPath',
-    'RepoPath',
     'XopenPath',
     'LocalPath',
 
@@ -39,4 +36,10 @@ __all__ = [
     'RemotePath',
 ]
 
-__version__ = '0.0.4'
+try:
+    from autpathlib.repo import RepoHelper RepoPath
+    __all__ += 'RepoPath'
+except ImportError:
+    pass
+
+__version__ = '0.0.5'
