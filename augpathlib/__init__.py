@@ -37,7 +37,7 @@ __all__ = [
 ]
 
 try:
-    from autpathlib.repo import RepoHelper RepoPath
+    from augpathlib.repo import RepoHelper, RepoPath
     __all__ += 'RepoPath'
 except ImportError:
     pass
