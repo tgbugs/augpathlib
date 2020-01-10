@@ -234,7 +234,6 @@ class RepoHelper:
         """ commit from index
             git commit -m {message} --date {date} -- {self}
         """
-        raise NotImplementedError()
         # TODO
         # use a modified Index.write_tree create an in memory tree
         # filtering out changed files that are not the current file
@@ -246,16 +245,25 @@ class RepoHelper:
         # get incorporated? I may have to use the full list of entries
         # but sneekily swap out the entries for other changed files for
         # the unmodified entry for their object, will need to experiment
-        commit = self.repo.index.commit
-        breakpoint()
-        return commit
+
+
+        # HAH take that complexity!
+        _mes = self.repo.git.stash('push')
+        try:
+            # FIXME concurrent modification?!
+            self.repo.git.checkout('stash@{0}', '--', self.as_posix())
+            commit = self.repo.index.commit(message=message,
+                                            author_date=date)
+            return commit
+        finally:
+            self.repo.git.stash('pop')
 
     def commit_from_working_tree(self, message, *, date=None):
         """ commit from working tree by automatically adding to index
             git add -- {self}
             git commit -m {message} --date {date} -- {self}
         """
-        self.index()
+        self.add_index()
         return self.commit(message, date=date)
 
     # show version file
@@ -263,6 +271,14 @@ class RepoHelper:
     def show(self, ref=''):
         # TODO make sure ref='' -> index
 
+        if ref is None:
+            with open(self, 'rb') as f:
+                return f.read()
+        else:
+            decoded = self.repo.git.show(ref + ':' + self.repo_relative_path.as_posix())
+            return decoded.encode('utf-8', 'surrogateescape')
+
+        return  # unfortunately traversing the tree is a pain for this
         def ref_to_object(ref_):
             if ref_ is None:
                 return None
@@ -271,21 +287,18 @@ class RepoHelper:
             else:
                 return self.repo.commit(ref_)
 
-        this = ref_to_object(ref_orig)
+        this = ref_to_object(ref)
 
         if this is None:
             with open(self, 'rb') as f:
                 return f.read()
         else:
-            this
-
-        return
-        if ref is None:
-            with open(self):
-                return f.read()
-
-        else:
-            return self.repo.git.show(ref + ':' + self.repo_relative_path.as_posix())
+            p = self.repo_relative_path.as_posix()
+            for blob in this.tree.blobs:
+                if blob.path == p:
+                    ds = blob.data_stream
+                    fcs = ds[-1]
+                    return fcs.read()
 
 
 class RepoPath(RepoHelper, AugmentedPath): pass

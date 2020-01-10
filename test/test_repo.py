@@ -59,6 +59,31 @@ class TestRepoPath(unittest.TestCase):
         rp = testing_base.clone_from('https://github.com/tgbugs/augpathlib.git', depth=1)
         assert rp.repo, f'{rp!r} {rp.repo}'
 
+    def test_show(self):
+        test_byte1 = b'\x98'
+        test_byte2 = b'\x99'
+        tag1 = 'tag1'
+        tag2 = 'tag2'
+        rp = testing_base / 'test-repo-show'
+        rp.init()
+        rp.repo.git.commit(message='Inital commit', allow_empty=True)
+
+        tf = rp / 'test-file'
+        with open(tf, 'wb') as f:
+            f.write(test_byte1)
+
+        tf.commit_from_working_tree("test byte one")
+        tf.repo.create_tag(tag1)
+
+        with open(tf, 'wb') as f:
+            f.write(test_byte2)
+
+        tf.commit_from_working_tree("test byte two")
+        tf.repo.create_tag(tag2)
+
+        value = tf.show('tag1')
+        assert value == test_byte1
+
 
 class TestComplex(unittest.TestCase):
     test_file = 'test-file'
