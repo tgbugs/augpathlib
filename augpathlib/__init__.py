@@ -23,6 +23,7 @@ __all__ = [
 
     'AugmentedPath',
     'XattrPath',
+    'RepoPath',
     'XopenPath',
     'LocalPath',
 
@@ -38,8 +39,15 @@ __all__ = [
 
 try:
     from augpathlib.repo import RepoHelper, RepoPath
-    __all__ += 'RepoPath'
-except ImportError:
-    pass
+except ImportError as e:
+    class RepoHelper:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f'{self.__class__.__name__} could not be imported '
+                              'due to a previous ImportError') from e
+
+
+    class RepoPath(RepoHelper):
+        pass
+
 
 __version__ = '0.0.5'
