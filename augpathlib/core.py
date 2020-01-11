@@ -96,11 +96,15 @@ def _catch_wrapper(func):
 class EatHelper:
     """ Extended attributes helper """
 
-    @classmethod
-    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+    @staticmethod
+    def _base_helpers(pos_helpers, win_helpers):
         pos_helpers = pos_helpers + (XattrHelper,)
         win_helpers = win_helpers + (ADSHelper,)
-        super()._bind_flavours(pos_helpers, win_helpers)
+        return pos_helpers, win_helpers
+
+    @classmethod
+    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        super()._bind_flavours(*cls._base_helpers(pos_helpers, win_helpers))
 
 
 class ADSHelper(EatHelper):
@@ -1012,11 +1016,15 @@ LocalPath._bind_flavours()
 
 
 class XopenPath(AugmentedPath):
+    @staticmethod
+    def _base_helpers(pos_helpers, win_helpers):
+        pos_helpers = tuple(set(pos_helpers + (XopenPosixHelper,)))
+        win_helpers = tuple(set(win_helpers + (XopenWindowsHelper,)))
+        return pos_helpers, win_helpers
+
     @classmethod
     def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
-        pos_helpers = pos_helpers + (XopenPosixHelper,)
-        win_helpers = win_helpers + (XopenWindowsHelper,)
-        super()._bind_flavours(pos_helpers, win_helpers)
+        super()._bind_flavours(*cls._base_helpers(pos_helpers, win_helpers))
 
 
 class XopenWindowsHelper:
