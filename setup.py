@@ -19,11 +19,11 @@ with open('README.md', 'rt') as f:
 try:
     import magic
     if hasattr(magic, 'libmagic'):
-        magic_dep = 'python-magic'
+        magic_dep = "python-magic; os_name != 'nt'"
     else:
-        magic_dep = 'file_magic'
+        magic_dep = "file_magic; os_name != 'nt'"
 except ImportError:
-    magic_dep = 'python-magic'
+    magic_dep = "python-magic; os_name != 'nt'"
 
 tests_require = ['pytest', 'pytest-runner']
 setup(

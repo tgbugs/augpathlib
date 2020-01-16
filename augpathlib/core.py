@@ -12,7 +12,7 @@ from functools import wraps
 from itertools import chain
 try:
     import magic  # from sys-apps/file consider python-magic ?
-except ImportError:
+except (ImportError, TypeError) as e:
     pass
 
 #import psutil  # import for experimental xopen functionality
