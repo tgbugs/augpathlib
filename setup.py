@@ -25,10 +25,6 @@ try:
 except ImportError:
     magic_dep = 'python-magic'
 
-platform_dependent_require = []
-if os.name != 'nt':
-    platform_dependent_require += ['pyxattr']
-
 tests_require = ['pytest', 'pytest-runner']
 setup(
     name='augpathlib',
@@ -50,12 +46,13 @@ setup(
     packages=['augpathlib'],
     python_requires='>=3.6',
     tests_require=tests_require,
-    install_requires=platform_dependent_require + [
+    install_requires=[
         'gitpython',
         magic_dep,
         'pexpect>=4.7.0',
         #'psutil',
         'python-dateutil',
+        "pyxattr; os_name != 'nt'",
         'terminaltables',
         #'Xlib',
     ],
