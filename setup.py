@@ -17,11 +17,14 @@ with open('README.md', 'rt') as f:
     long_description = f.read()
 
 try:
-    import magic
-    if hasattr(magic, 'libmagic'):
-        magic_dep = "python-magic; os_name != 'nt'"
+    if os.name == 'nt':
+        raise ImportError('the alternate will fail with a TypeError')
     else:
-        magic_dep = "file_magic; os_name != 'nt'"
+        import magic
+        if hasattr(magic, 'libmagic'):
+            magic_dep = "python-magic; os_name != 'nt'"
+        else:
+            magic_dep = "file_magic; os_name != 'nt'"
 except ImportError:
     magic_dep = "python-magic; os_name != 'nt'"
 
