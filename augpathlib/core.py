@@ -396,6 +396,27 @@ class AugmentedPath(pathlib.Path):
     def commonpath(self, other):
         return self.__class__(os.path.commonpath((self, other)))
 
+    def to_relative(self, other):
+        """ unfortunately pathlib's relative_to should
+            actually be called relative_from because it is the
+            relative path FROM the other path to the current path
+            or rather it is relative_to_here_from_there which is
+            not good because the final from is truncated, confusing
+            everything also 'from here to there' is much more natural """
+
+        rp = self.relative_to(other)
+        return self.__class__(*['..' for _ in rp.parts[:-1]])
+
+    def relative_path_to(self, other):  # from here
+        """ an actual implementation of relative_to that works ... """
+        return other.relative_path_from(self)
+
+    def relative_path_from(self, other):  # to here
+        """ relative path to self from the other path """
+        base = self.commonpath(other)
+        ort = other.to_relative(base)
+        return ort / self.relative_to(base)
+
     def rename(self, target):
         os.rename(self, target)
 
@@ -871,8 +892,11 @@ class LocalPath(EatHelper, AugmentedPath):
 
     @data.setter
     def data(self, generator):
-        if self.cache is not None:
-            cmeta = self.cache.meta
+        cache = self.cache
+        if cache is not None:
+            cmeta = cache.meta
+        else:
+            assert self.cache is None
 
         # FIXME do we touch a file, write the meta
         # and then write the data?
@@ -889,10 +913,11 @@ class LocalPath(EatHelper, AugmentedPath):
                 #log.debug(chunk)
                 f.write(chunk)
 
-        if self.cache is not None:  # FIXME cache
-            if not self.cache.meta:
-                self.cache.meta = cmeta  # glories of persisting xattrs :/
+        if cache is not None:  # FIXME cache
+            if not cache.meta:
+                cache.meta = cmeta  # glories of persisting xattrs :/
             # yep sometimes the xattrs get  blasted >_<
+            assert cache.meta
             assert self.cache.meta
 
     def _data_setter(self, generator):

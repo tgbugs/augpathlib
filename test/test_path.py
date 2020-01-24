@@ -63,6 +63,16 @@ class TestAugPath(unittest.TestCase):
         # this doesn't test passing deeper ...
         self.test_path.rmtree(ignore_errors=True, onerror=onerror)
 
+    def test_relative_path_from(self):
+        p1 = self.test_path / 'a' / 'b' / 'c' / 'd'
+        p2 = self.test_path / 'e' / 'f' / 'g' / 'h'
+        e1 = AugmentedPath('..', '..', '..', 'a', 'b', 'c', 'd')
+        e2 = AugmentedPath('..', '..', '..', 'e', 'f', 'g', 'h')
+        p1rfp2 = p1.relative_path_from(p2)
+        p2rfp1 = p2.relative_path_from(p1)
+        assert e1 == p1rfp2, p1rfp2
+        assert e2 == p2rfp1, p2rfp1
+
 
 class TestACachePath(unittest.TestCase):
     def setUp(self):
