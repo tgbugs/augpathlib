@@ -4,7 +4,7 @@ from augpathlib.core import (AugmentedPath,
                              AugmentedPathWindows,
                              XopenPath,
                              LocalPath,
-                             EatHelper)
+                             EatPath)
 from augpathlib.caches import (CachePath,
                                PrimaryCache,
                                SqliteCache,
@@ -50,4 +50,4 @@ __all__ = [
     'RemotePath',
 ]
 
-__version__ = '0.0.8'
+__version__ = '0.0.9'

@@ -7,11 +7,16 @@ from .common import test_base, onerror
 sandbox = test_base / 'eat-sandbox'
 
 
-class EatPath(aug.EatHelper, aug.AugmentedPath): pass
+class EatPath(aug.EatPath, aug.AugmentedPath): pass
 EatPath._bind_flavours()
 
 
+class EatXopenPath(aug.EatPath, aug.XopenPath, aug.AugmentedPath): pass
+EatXopenPath._bind_flavours()
+
+
 class TestEat(unittest.TestCase):
+    test_class = EatPath
     @classmethod
     def setUpClass(cls):
         sandbox.mkdir(parents=True)
@@ -21,12 +26,12 @@ class TestEat(unittest.TestCase):
         sandbox.rmtree(onerror=onerror)
     
     def setUp(self):
-        self.dir = EatPath(sandbox, 'some-dir')
+        self.dir = self.test_class(sandbox, 'some-dir')
         if self.dir.exists():
             self.dir.rmtree(onerror=onerror)
         self.dir.mkdir()
 
-        self.file = EatPath(sandbox, 'some-file')
+        self.file = self.test_class(sandbox, 'some-file')
         if self.file.exists() :
             self.file.unlink()
         self.file.touch()
@@ -58,3 +63,7 @@ class TestEat(unittest.TestCase):
         self.file.setxattr('key', b'value')
         test = self.file.xattrs()
         assert test
+
+
+class TestEatXopen(TestEat):
+    test_class = EatXopenPath

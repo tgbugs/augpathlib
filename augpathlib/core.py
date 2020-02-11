@@ -98,13 +98,13 @@ class EatHelper:
 
     @staticmethod
     def _base_helpers(pos_helpers, win_helpers):
-        pos_helpers = pos_helpers + (XattrHelper,)
-        win_helpers = win_helpers + (ADSHelper,)
+        pos_helpers = tuple(set(pos_helpers + (XattrHelper,)))
+        win_helpers = tuple(set(win_helpers + (ADSHelper,)))
         return pos_helpers, win_helpers
 
     @classmethod
     def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
-        super()._bind_flavours(*cls._base_helpers(pos_helpers, win_helpers))
+        super()._bind_flavours(*EatHelper._base_helpers(pos_helpers, win_helpers))
 
 
 class ADSHelper(EatHelper):
@@ -631,7 +631,14 @@ pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
 AugmentedPath._bind_flavours()
 
 
-class LocalPath(EatHelper, AugmentedPath):
+class EatPath(EatHelper, AugmentedPath):
+    pass
+
+
+EatPath._bind_flavours()
+
+
+class LocalPath(EatPath, AugmentedPath):
     # local data about remote objects
 
     chunksize = 4096  # make the data generator chunksize visible externally
@@ -1040,7 +1047,7 @@ class LocalPath(EatHelper, AugmentedPath):
 LocalPath._bind_flavours()
 
 
-class XopenPath(AugmentedPath):
+class XopenHelper:
     @staticmethod
     def _base_helpers(pos_helpers, win_helpers):
         pos_helpers = tuple(set(pos_helpers + (XopenPosixHelper,)))
@@ -1049,10 +1056,10 @@ class XopenPath(AugmentedPath):
 
     @classmethod
     def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
-        super()._bind_flavours(*cls._base_helpers(pos_helpers, win_helpers))
+        super()._bind_flavours(*XopenHelper._base_helpers(pos_helpers, win_helpers))
 
 
-class XopenWindowsHelper:
+class XopenWindowsHelper(XopenHelper):
     _command = 'start'
 
     def xopen(self):
@@ -1062,7 +1069,7 @@ class XopenWindowsHelper:
                                    stderr=subprocess.STDOUT)
 
 
-class XopenPosixHelper:
+class XopenPosixHelper(XopenHelper):
     _command = 'open' if sys.platform == 'darwin' else 'xdg-open'
 
     def xopen(self):
@@ -1115,6 +1122,10 @@ class XopenPosixHelper:
                 break
             else:
                 sleep(.01)  # spin a bit more slowly
+
+
+class XopenPath(XopenHelper, AugmentedPath):
+    pass
 
 
 XopenPath._bind_flavours()
