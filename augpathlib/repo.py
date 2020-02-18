@@ -1,4 +1,5 @@
 import pathlib
+from urllib.parse import urlparse
 from git import Repo
 from augpathlib import AugmentedPath
 from augpathlib import exceptions as exc

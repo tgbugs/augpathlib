@@ -6,7 +6,6 @@ import mimetypes
 import subprocess
 from time import sleep
 from errno import ELOOP, ENOENT, ENOTDIR, EBADF
-from urllib.parse import urlparse
 from datetime import datetime, timezone
 from functools import wraps
 from itertools import chain
