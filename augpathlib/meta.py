@@ -442,27 +442,6 @@ class _PathMetaAsXattrs(_PathMetaConverter):
             log.warning(f'conversion not implemented for field {field}')
 
         raise exc.UnhandledTypeError(f'dont know what to do with {value!r}')
-        return
-        if field == 'errors':
-            value = ';'.join(value)
-
-        if isinstance(value, datetime):  # FIXME :/ vs iso8601
-            value = isoformat(value)
-
-        if isinstance(value, int):
-            # this is local and will pass through here before move?
-            #out = value.to_bytes(value.bit_length() , sys.byteorder)
-            out = str(value).encode()  # better to have human readable
-        elif isinstance(value, float):
-            out = struct.pack('d', value) #= bytes(value.hex())
-
-        elif isinstance(value, str):
-            out = value.encode()
-
-        else:
-            raise exc.UnhandledTypeError(f'dont know what to do with {value!r}')
-
-        return out
 
     def decode(self, field, value):
         if field in ('created', 'updated'):  # FIXME human readable vs integer :/
