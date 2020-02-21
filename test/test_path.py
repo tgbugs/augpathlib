@@ -1,5 +1,7 @@
 import unittest
 from pathlib import PurePosixPath
+import pytest
+from augpathlib import exceptions as exc
 from augpathlib import AugmentedPath, LocalPath
 from augpathlib import SymlinkCache, PrimaryCache
 from augpathlib import PathMeta
@@ -17,9 +19,7 @@ from .common import (log,
 
 SymlinkCache._local_class = AugmentedPath  # have to set a default
 
-
-class TestAugPath(unittest.TestCase):
-
+class Helper:
     def setUp(self):
         if not test_base.exists():
             test_base.mkdir()
@@ -40,6 +40,9 @@ class TestAugPath(unittest.TestCase):
 
         if self.test_path.exists():
             self.test_path.rmtree(onerror=onerror)
+
+
+class TestAugPath(Helper, unittest.TestCase):
 
     def test_is_dir_symlink(self):
         assert not self.test_link.is_dir()
@@ -72,6 +75,74 @@ class TestAugPath(unittest.TestCase):
         p2rfp1 = p2.relative_path_from(p1)
         assert e1 == p1rfp2, p1rfp2
         assert e2 == p2rfp1, p2rfp1
+
+class TestAugPathCopy(Helper, unittest.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.test_path.mkdir()
+        self.source_d = self.test_path / 'source-dir'
+        self.target_d = self.test_path / 'target-dir'
+        self.source_f = self.test_path / 'source-file'
+        self.target_f = self.test_path / 'target-file'
+        self.source_d.mkdir()
+        self.target_d.mkdir()
+        self.source_f.touch()
+        self.target_f.touch()
+
+    def test_copy_into(self):
+        #self.source_d.copy_into(self.target_d)  # copytree not currently supported
+        self.source_f.copy_into(self.target_d)
+
+    def test_copy_into_fail_d(self):
+        try:
+            self.source_d.copy_into(self.target_f)
+            raise AssertionError('should have failed with NotADirectoryError')
+        except NotADirectoryError:
+            pass
+
+    def test_copy_into_fail_f(self):
+        try:
+            self.source_f.copy_into(self.target_f)
+            raise AssertionError('should have failed with NotADirectoryError')
+        except NotADirectoryError:
+            pass
+
+    @pytest.mark.skip('copytree not implemented')
+    def test_copy_into_fail_existing_d(self):
+        self.source_d.copy_into(self.target_d)
+        try:
+            self.source_d.copy_into(self.target_d)
+            raise AssertionError('should have failed with FileExistsError')
+        except FileExistsError:
+            pass
+
+    def test_copy_into_fail_existing_f(self):
+        self.source_f.copy_into(self.target_d)
+        try:
+            self.source_f.copy_into(self.target_d)
+            raise AssertionError('should have failed with FileExistsError')
+        except exc.PathExistsError:
+            pass
+
+    def test_copy_infrom(self):
+        #self.target_d.copy_infrom(self.source_d)  # copytree not implemented
+        self.target_d.copy_infrom(self.source_f)
+    
+    @pytest.mark.skip('copytree not implemented')
+    def test_copy_infrom_fail_d(self):
+        try:
+            self.target_f.copy_infrom(self.source_d)
+            raise AssertionError('should have failed with NotADirectoryError')
+        except NotADirectoryError:
+            pass
+
+    def test_copy_infrom_fail_f(self):
+        try:
+            self.target_f.copy_infrom(self.source_f)
+            raise AssertionError('should have failed with NotADirectoryError')
+        except NotADirectoryError:
+            pass
 
 
 class TestACachePath(unittest.TestCase):

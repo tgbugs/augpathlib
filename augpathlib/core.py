@@ -545,6 +545,8 @@ class AugmentedPath(pathlib.Path):
     def copy_to(self, target, force=False):
         """ copy from a the current path object to a target path """
         if not target.exists() and not target.is_symlink() or force:
+            # FIXME copytree does not happen, so sources cannot currently
+            # be directories, what are the downsides of homogenizing that?
             shutil.copy2(self, target)
 
         else:
@@ -553,6 +555,16 @@ class AugmentedPath(pathlib.Path):
     def copy_from(self, source, force=False, copy_cache_meta=False):
         """ copy from a source path to the current path object """
         source.copy_to(self, force=force)
+
+    def copy_into(self, target, force=False):
+        """ copy the current path into a target directory """
+        if not target.is_dir():
+            raise NotADirectoryError(f'{target} is not a directory')
+
+        self.copy_to(target / self.name)
+
+    def copy_infrom(self, source, force=False):
+        source.copy_into(self, force=force)
 
 
 class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
