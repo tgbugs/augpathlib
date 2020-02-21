@@ -556,15 +556,16 @@ class AugmentedPath(pathlib.Path):
         """ copy from a source path to the current path object """
         source.copy_to(self, force=force)
 
-    def copy_into(self, target, force=False):
-        """ copy the current path into a target directory """
+    def copy_outto(self, target, force=False):
+        """ copy the current path out to a target directory """
         if not target.is_dir():
             raise NotADirectoryError(f'{target} is not a directory')
 
         self.copy_to(target / self.name)
 
     def copy_infrom(self, source, force=False):
-        source.copy_into(self, force=force)
+        """ copy into the current directory a file from somewhere else """
+        source.copy_outto(self, force=force)
 
 
 class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass

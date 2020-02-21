@@ -90,37 +90,37 @@ class TestAugPathCopy(Helper, unittest.TestCase):
         self.source_f.touch()
         self.target_f.touch()
 
-    def test_copy_into(self):
-        #self.source_d.copy_into(self.target_d)  # copytree not currently supported
-        self.source_f.copy_into(self.target_d)
+    def test_copy_outto(self):
+        #self.source_d.copy_outto(self.target_d)  # copytree not currently supported
+        self.source_f.copy_outto(self.target_d)
 
-    def test_copy_into_fail_d(self):
+    def test_copy_outto_fail_d(self):
         try:
-            self.source_d.copy_into(self.target_f)
+            self.source_d.copy_outto(self.target_f)
             raise AssertionError('should have failed with NotADirectoryError')
         except NotADirectoryError:
             pass
 
-    def test_copy_into_fail_f(self):
+    def test_copy_outto_fail_f(self):
         try:
-            self.source_f.copy_into(self.target_f)
+            self.source_f.copy_outto(self.target_f)
             raise AssertionError('should have failed with NotADirectoryError')
         except NotADirectoryError:
             pass
 
     @pytest.mark.skip('copytree not implemented')
-    def test_copy_into_fail_existing_d(self):
-        self.source_d.copy_into(self.target_d)
+    def test_copy_outto_fail_existing_d(self):
+        self.source_d.copy_outto(self.target_d)
         try:
-            self.source_d.copy_into(self.target_d)
+            self.source_d.copy_outto(self.target_d)
             raise AssertionError('should have failed with FileExistsError')
         except FileExistsError:
             pass
 
-    def test_copy_into_fail_existing_f(self):
-        self.source_f.copy_into(self.target_d)
+    def test_copy_outto_fail_existing_f(self):
+        self.source_f.copy_outto(self.target_d)
         try:
-            self.source_f.copy_into(self.target_d)
+            self.source_f.copy_outto(self.target_d)
             raise AssertionError('should have failed with FileExistsError')
         except exc.PathExistsError:
             pass
