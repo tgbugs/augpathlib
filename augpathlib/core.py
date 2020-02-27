@@ -705,8 +705,16 @@ class LocalPath(EatPath, AugmentedPath):
 
         return cache
 
-    def mkdir_cache(self, remote):
-        """ wow side effects everywhere """
+    def mkdir_cache(self, remote):  # XXX hack around my idiocy / desire to not hit the network
+        """ wow side effects everywhere
+            given a remote, create the local folder structure
+            and attach the remote metadata as cache
+
+            I think this is implemented on LocalPath because only the
+            local parent exists and the cache can only come into being after
+            a folder is created since there is no point in making a symlink
+            just to replace it with a folder, that just thrashes disk """
+
         cc = self._cache_class
         rc = cc._remote_class
         for parent in reversed(tuple(remote.parents)):
@@ -716,6 +724,47 @@ class LocalPath(EatPath, AugmentedPath):
             if not local_path.exists():
                 local_path.mkdir()
                 rc(parent, cache=cc(local_path, remote=parent, meta=parent.meta))
+
+    def mkdir_remote(self, parents=False):  # XXX hack around my idiocy / desire to not hit the network
+        # FIXME this should really make a cache with a temporary id ...
+        # that way we have a staging area ... but that is a bit too much for right now
+        if self.cache and self.remote and self.remote.exists():
+            # it is ok to check all of these to make sure that
+            # things don't go stale, under most circumstances
+            # self.cache will be None when this is called
+            raise exc.RemotePathExistsError(self.remote)
+
+        if self.parent.cache:
+            remote = self.parent.remote._mkdir_child(self.name)
+            # FIXME see the note about my dumbness wrt paths
+            # the whole remote appraoch nees a complete rework so that the remotes
+            # just act like paths rathern than forcing them to exist which causes all
+            # sorts of awkwardness, including the RemoteMaybeExists issue
+            self.mkdir(exist_ok=True)
+            self.cache_init(remote.meta)
+            remote._cache = self.cache
+            return remote
+
+        elif parents:
+            for parent in self.parents:
+                c = parent.cache
+                if c:
+                    parts = self.relative_path_from(parent).parts
+                    for p in parts:
+                        print(self, parent, parts, p)
+                        remote = parent.cache.remote._mkdir_child(p)
+                        local = parent / p
+                        local.mkdir(exist_ok=True)
+                        local.cache_init(remote.meta)
+                        parent = local
+                        #parent = remote.cache.local  # fails due to cache is None
+                        # FIXME will this work as expected ?! and just put the metadata on the
+                        # existing folder or will it barf? the answer is no, cache is missing
+
+                    remote._cache = local.cache
+                    return remote
+        else:
+            raise FileNotFoundError('missing parent for {self} and parents=False')
 
     def find_cache_root(self):
         """ find the local root of the cache tree, even if we start with skips """

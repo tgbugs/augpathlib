@@ -19,6 +19,10 @@ class RemotePath:
     _cache_class = None
     _debug = False
 
+    # ugh this is such a bad implementation, let the remote paths exists
+    # and init, and then just check if they exist, a path is not an object
+    # that always dereferences ... what the heck was I thinking when I did this ...
+
     # we use a PurePath becuase we still want to key off this being local path
     # but we don't want any of the local file system operations to work by accident
     # so for example self.stat should return the remote value not the local value

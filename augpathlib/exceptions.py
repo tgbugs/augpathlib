@@ -12,7 +12,11 @@ class PathExistsError(AugPathlibError):
     """ path exists so don't try to symlink """
 
 
-class DirectoryNotEmptyError(AugPathlibError):
+class RemotePathExistsError(AugPathlibError):
+    """ the remote path already exists so don't create it """
+
+
+class DirectoryNotEmptyError(AugPathlibError):  # FIXME compare to PathNotEmpty
     """ directory is not empty """
 
 
@@ -20,7 +24,7 @@ class TargetPathExistsError(PathExistsError):
     """ when adding to a path if fail_on_exists is set raise this """
 
 
-class PathNotEmptyError(AugPathlibError):
+class PathNotEmptyError(AugPathlibError):  # FIXME iirc used in clone, compare with DirectoryNotEmpty
     """ folder has children and is not empty, don't overwrite """
 
 
