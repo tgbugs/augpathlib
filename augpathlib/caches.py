@@ -159,6 +159,14 @@ class CachePath(AugmentedPath):
         # to limit directory size
         return self.local_objects_dir / self.cache_key
 
+    def local_data_dir_init(self, exist_ok=True):
+        # FIXME shouldn't this always run once the
+        # first time a class is initialized and then
+        # modify new to never call it again?
+        self.local_data_dir.mkdir(exist_ok=exist_ok)
+        self.local_objects_dir.mkdir(exist_ok=exist_ok)
+        self.trash.mkdir(exist_ok=exist_ok)
+
     @property
     def is_helper_cache(self):
         return hasattr(self, '_cache_parent')
