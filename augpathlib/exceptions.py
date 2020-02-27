@@ -111,3 +111,11 @@ class NotInRepoError(AugPathlibError):
 
 class NoCommitsForFile(AugPathlibError):
     """ could not find any commits for file """
+
+
+class RemoteAlreadyAnchoredError(AugPathlibError):
+    """ a Remote class has already been anchored locally """
+
+
+class CacheExistsError(AugPathlibError):
+    """ attempting to init a cache that already exists """

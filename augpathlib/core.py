@@ -688,8 +688,8 @@ class LocalPath(EatPath, AugmentedPath):
     def cache_init(self, id_or_meta, anchor=False):
         """ wow it took way too long to realize this was the way to do it >_< """
         if self.cache and self.cache.meta:
-            raise ValueError(f'Cache already exists! {self.cache}\n'
-                             f'{self.cache.meta}')
+            raise exc.CacheExistsError(f'{self.cache}\n'
+                                       f'{self.cache.meta}')
 
         elif not self.exists():
             raise ValueError(f'Cannot init a cache on a non-existent path!\n{self}')

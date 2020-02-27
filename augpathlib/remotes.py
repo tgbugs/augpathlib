@@ -68,7 +68,7 @@ class RemotePath:
             raise ValueError(f'{cls} already bound an api to {cls._api}')
 
     @classmethod
-    def anchorTo(cls, cache_anchor):
+    def anchorToCache(cls, cache_anchor):
         # FIXME need to check for anchor after init and init after anchor
         if not hasattr(cls, '_cache_anchor'):
             if not hasattr(cls, '_api'):
@@ -83,21 +83,76 @@ class RemotePath:
             raise ValueError(f'already anchored to {cls._cache_anchor}')
 
     @classmethod
+    def anchorTo(cls, path, create=False):
+        if isinstance(path, caches.CachePath):
+            # FIXME the non-existence problem rears its head again
+            cls.anchorToCache(path)
+        elif isinstance(path, LocalPath):
+            # FIXME the non-existence problem rears its head again
+            if path.cache:
+                cls.anchorToCache(path.cache)
+            else:
+                if path.name != cls.root.name:
+                    # unlike git you cannot clone to a folder with a different
+                    # name (for now ... maybe can figure out how in the future)
+                    raise ValueError('Path name and root name do not match.'
+                                     f'{path.name} != {cls.root.name}')
+
+                if create:
+                    cls.dropAnchor(path.parent)  # existing folder dealt with in dropAnchor
+                else:
+                    raise ValueError(f'not creating {path} since create=False')
+        else:
+            raise TypeError(f"Don't know how to anchor to a {type(path)} {path}")
+
+    @classmethod
+    def _get_local_root_path(cls, parent_path=None):
+        if parent_path is None:
+            parent_path = cls._local_class.cwd()
+        else:
+            parent_path = cls._local_class(parent_path)
+
+        root = cls(cls.root)  # FIXME formalize the use of root
+        path = parent_path / root.name
+        return root, path
+
+    @classmethod
+    def smartAnchor(cls, parent_path=None):
+        # work around the suspect logic
+        # in the implementation below
+        try:
+            cls.dropAnchor(parent_path=parent_path)
+        except exc.RemoteAlreadyAnchoredError as e:
+            root, path = cls._get_local_root_path(parent_path)
+            if cls._cache_anchor == path.cache:
+                return cls._cache_anchor
+            else:
+                raise e  # possibly check if the anchor is the same?
+
+        except exc.CacheExistsError as e:
+            root, path = cls._get_local_root_path(parent_path)
+            cls._cache_anchor = path.cache
+            return cls._cache_anchor
+
+        except exc.DirectoryNotEmptyError as e:
+            root, path = cls._get_local_root_path(parent_path)
+            if path.cache:
+                cls._cache_anchor = path.cache
+                return cls._cache_anchor
+            else:
+                raise e
+
+    @classmethod
     def dropAnchor(cls, parent_path=None):
         """ If a _cache_anchor does not exist then create it,
             otherwise raise an error. If a local anchor already
             exists do not use this method. """
         if not hasattr(cls, '_cache_anchor'):
-            if parent_path is None:
-                parent_path = cls._local_class.cwd()
-            else:
-                parent_path = cls._local_class(parent_path)
-
-            root = cls(cls.root)  # FIXME formalize the use of root
-            path = parent_path / root.name
+            root, path = cls._get_local_root_path(parent_path)
             if not path.exists():
                 if root.is_file():
-                    raise NotImplementedError('Have not implemented mapping for individual files yet.')
+                    raise NotImplementedError(
+                        'Have not implemented mapping for individual files yet.')
 
                 elif root.is_dir():
                     path.mkdir()
@@ -109,10 +164,14 @@ class RemotePath:
                 raise exc.DirectoryNotEmptyError(f'has children {path}')
 
             cls._cache_anchor = path.cache_init(root.id, anchor=True)
+            # we explicitly do not handle the possible CacheExistsError here
+            # so that there is a path where anchoring can fail loudly
+            # we may not need that at the end of the day, but we will see
             return cls._cache_anchor
 
         else:
-            raise ValueError(f'already anchored to {cls._cache_anchor}')
+            raise exc.RemoteAlreadyAnchoredError(f'{cls} already anchored to '
+                                                 f'{cls._cache_anchor}')
 
     @classmethod
     def setup(cls, local_class, cache_class):
