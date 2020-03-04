@@ -1,5 +1,6 @@
 import pathlib
 from urllib.parse import urlparse
+import git
 from git import Repo
 from augpathlib import AugmentedPath
 from augpathlib import exceptions as exc
@@ -158,10 +159,9 @@ class RepoHelper:
     def remote_uri_machine(self, ref=None):
         return self._remote_uri('https://raw.githubusercontent.com', ref=ref)
 
-    @property
-    def latest_commit(self):
+    def latest_commit(self, rev=None):
         try:
-            return next(self.repo.iter_commits(paths=self.as_posix(), max_count=1))
+            return next(self.repo.iter_commits(rev=rev, paths=self.as_posix(), max_count=1))
         except StopIteration as e:
             raise exc.NoCommitsForFile(self) from e
 
@@ -248,16 +248,32 @@ class RepoHelper:
         # the unmodified entry for their object, will need to experiment
 
 
-        # HAH take that complexity!
-        _mes = self.repo.git.stash('push')
-        try:
-            # FIXME concurrent modification?!
-            self.repo.git.checkout('stash@{0}', '--', self.as_posix())
-            commit = self.repo.index.commit(message=message,
-                                            author_date=date)
-            return commit
-        finally:
-            self.repo.git.stash('pop')
+        if self.repo.active_branch.is_valid(): # handle the empty repo case
+            # HAH take that complexity!
+            _mes = self.repo.git.stash('push')
+            try:
+                # FIXME concurrent modification?!
+                try:
+                    self.repo.git.checkout('stash@{0}', '--', self.as_posix())
+                except git.exc.GitCommandError:
+                    pass
+
+                commit = self.repo.index.commit(message=message,
+                                                author_date=date)
+                return commit
+            finally:
+                try:
+                    self.repo.git.stash('pop')
+                except git.exc.GitCommandError:
+                    pass
+        else:
+            try:
+                self.repo.tree()
+                raise ValueError('we are not in the situation we though we were in')
+            except:
+                commit = self.repo.index.commit(message=message,
+                                                author_date=date)
+                return commit
 
     def commit_from_working_tree(self, message, *, date=None):
         """ commit from working tree by automatically adding to index
