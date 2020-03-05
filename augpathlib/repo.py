@@ -97,7 +97,7 @@ class RepoHelper:
         if (self / '.git').exists():
             if not self.is_absolute():
                 # avoid cases where RepoPath('.') gets put in the repos cache
-                return self.absolute()
+                return self.expanduser().absolute()
             else:
                 return self
 
@@ -106,7 +106,7 @@ class RepoHelper:
 
         else:
             if not self.is_absolute():
-                return self.absolute().parent.working_dir
+                return self.expanduser().absolute().parent.working_dir
             else:
                 return self.parent.working_dir
 
@@ -116,7 +116,7 @@ class RepoHelper:
         repo = self.repo
         if repo is not None:
             if not self.is_absolute():
-                path = self.absolute()
+                path = self.expanduser().absolute()
             else:
                 path = self
 
@@ -161,7 +161,9 @@ class RepoHelper:
 
     def latest_commit(self, rev=None):
         try:
-            return next(self.repo.iter_commits(rev=rev, paths=self.as_posix(), max_count=1))
+            return next(self.repo.iter_commits(rev=rev,
+                                               paths=self.expanduser().resolve().as_posix(),
+                                               max_count=1))
         except StopIteration as e:
             raise exc.NoCommitsForFile(self) from e
 
