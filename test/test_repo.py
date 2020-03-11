@@ -27,6 +27,7 @@ class TestRepoPath(unittest.TestCase):
         rp = testing_base / 'test-repo'
         repo = rp.init()
         assert repo, f'hrm {rp!r} {repo}'
+        return rp
 
     def test_clone_path(self):
         rp = testing_base.clone_path('git@github.com:tgbugs/augpathlib.git')
@@ -41,23 +42,30 @@ class TestRepoPath(unittest.TestCase):
     def test_init_from_local_repo(self):
         rp = testing_base / 'test-repo'
         this_repo_path = RepoPath(__file__).working_dir
-        if this_repo_path is not None:
+        if rp.working_dir is not None:
+            pytest.skip('not testing inside another git repo')
+
+        if this_repo_path is None:
+            pytest.skip('this test file is not under version control, so there is no local repo')
+
+        else:
             this_repo = this_repo_path.repo
             repo = rp.init(this_repo_path, depth=1)
             assert repo, f'{rp!r} {repo}'
-        else:
-            pytest.skip('not testing from inside a git repo')
+            return rp
 
     @skipif_no_net
     def test_init_with_remote(self):
         rp = testing_base / 'test-repo'
         repo = rp.init('https://github.com/tgbugs/augpathlib.git', depth=1)
         assert repo, f'{rp!r} {repo}'
+        return rp
 
     @skipif_no_net
     def test_clone_from(self):
         rp = testing_base.clone_from('https://github.com/tgbugs/augpathlib.git', depth=1)
         assert rp.repo, f'{rp!r} {rp.repo}'
+        return rp
 
     def test_show(self):
         test_byte1 = b'\x98'
@@ -84,6 +92,32 @@ class TestRepoPath(unittest.TestCase):
         value = tf.show('tag1')
         assert value == test_byte1
 
+    def test_stale_repo_cache(self):
+        rp = self.test_init()
+        rp.repo
+        rp.rmtree()
+        try:
+            rp.repo
+            assert False, 'should have failed'
+        except exc.NotInRepoError:
+            pass
+
+        rp2 = RepoPath(rp)
+        try:
+            rp2.repo
+            assert False, 'should have failed'
+        except exc.NotInRepoError:
+            pass
+
+    @skipif_no_net
+    def test_remote_uris(self):
+        rp = self.test_init_with_remote()
+        h = rp.remote_uri_human()
+        m = rp.remote_uri_machine()
+        h = rp.remote_uri_human('master')
+        m = rp.remote_uri_machine('master')
+        assert h != m  # TODO probably need a better test here
+
 
 class TestComplex(unittest.TestCase):
     test_file = 'test-file'
@@ -96,9 +130,7 @@ class TestComplex(unittest.TestCase):
     def tearDown(self):
         LocalPath(testing_base).rmtree(onerror=onerror)
 
-    @pytest.mark.skip('TODO, commit not working yet')
     def test_commit(self):
-        return
         self.test_file.touch()
         self.test_file.add_index()
         c1 = self.test_file.commit(message='test commit 1')
@@ -107,7 +139,6 @@ class TestComplex(unittest.TestCase):
         c2 = self.test_file.commit(message='test commit 1')
         self.test_file.data = (b'b' for _ in (0,))
 
-    @pytest.mark.skip('TODO')
     def test_diff(self):
         self.test_commit()
         d = self.test_file.diff('HEAD', 'HEAD~1')
