@@ -231,7 +231,12 @@ class RepoHelper:
 
     def add_index(self):
         """ git add -- {self} """
-        self.repo.index.add([self.as_posix()])
+        # FIXME workaround for broken GitPython behavior on windows
+        # C:\\Users\\tom\\git\\repo-name != C:/Users/tom/git/repo-name
+        # because they are testing with strings
+        # so we use repo_relative_path to avoid the broken
+        # _to_relative_path in GitPython
+        self.repo.index.add([self.repo_relative_path.as_posix()])
 
     def commit(self, message, *, date=None):
         """ commit from index
@@ -320,5 +325,19 @@ class RepoHelper:
                     return fcs.read()
 
 
-class RepoPath(RepoHelper, AugmentedPath): pass
+class RepoPath(RepoHelper, AugmentedPath):
+    def rmtree(self, ignore_errors=False, onerror=None, DANGERZONE=False):
+        if self in self._repos:
+            # remove the reference to the soon to be stale repo
+            # in order to prevent GitPython cmd.Git._get_persistent_cmd
+            # from causing errors on windows
+            # https://github.com/gitpython-developers/GitPython/issues/553
+            # https://github.com/gitpython-developers/GitPython/pull/686
+            self._repos.pop(self).close()
+
+        super().rmtree(ignore_errors=ignore_errors,
+                       onerror=onerror,
+                       DANGERZONE=DANGERZONE)
+
+
 RepoPath._bind_flavours()

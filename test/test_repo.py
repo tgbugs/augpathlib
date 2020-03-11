@@ -2,6 +2,7 @@ import os
 import pathlib
 import unittest
 import pytest
+import augpathlib as aug
 from augpathlib import RepoPath, LocalPath, exceptions as exc
 from .common import onerror, skipif_no_net, temp_path
 
@@ -21,7 +22,7 @@ class TestRepoPath(unittest.TestCase):
             testing_base.mkdir()
 
     def tearDown(self):
-        LocalPath(testing_base).rmtree(onerror=onerror)
+        RepoPath(testing_base).rmtree(onerror=onerror)
 
     def test_init(self):
         rp = testing_base / 'test-repo'
@@ -95,7 +96,7 @@ class TestRepoPath(unittest.TestCase):
     def test_stale_repo_cache(self):
         rp = self.test_init()
         rp.repo
-        rp.rmtree()
+        aug.AugmentedPath(rp).rmtree()  # have to call rmtree that won't invoke repo.close()
         try:
             rp.repo
             assert False, 'should have failed'
@@ -128,7 +129,7 @@ class TestComplex(unittest.TestCase):
         self.test_file = self.hp / self.test_file
 
     def tearDown(self):
-        LocalPath(testing_base).rmtree(onerror=onerror)
+        RepoPath(testing_base).rmtree(onerror=onerror)
 
     def test_commit(self):
         self.test_file.touch()
