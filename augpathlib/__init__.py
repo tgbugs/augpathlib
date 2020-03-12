@@ -18,9 +18,9 @@ try:
     from augpathlib.repo import RepoHelper, RepoPath
 except ImportError as e:
     class RepoHelper:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, __error=e, **kwargs):
             raise ImportError(f'{self.__class__.__name__} could not be imported '
-                              'due to a previous ImportError') from e
+                              'due to a previous ImportError') from __error
 
 
     class RepoPath(RepoHelper):
