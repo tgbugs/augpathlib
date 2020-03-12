@@ -125,6 +125,9 @@ class FileSize(int):
         else:
             return '??'  # sigh
 
+    def __str__(self):
+        return super().__repr__()
+
     def __repr__(self):
         return f'{self.__class__.__name__} <{self.hr} {self}>'
 
