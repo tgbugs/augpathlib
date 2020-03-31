@@ -5,7 +5,7 @@ from pathlib import PurePath
 import pytest
 from augpathlib import LocalPath as Path
 from augpathlib.caches import SshCache, ReflectiveCache
-from augpathlib.remotes import SshRemoteFactory
+from augpathlib.remotes import SshRemote
 from .common import project_path, TestPathHelper, skipif_no_net
 
 @skipif_no_net
@@ -14,20 +14,22 @@ from .common import project_path, TestPathHelper, skipif_no_net
 class TestSshRemote(TestPathHelper, unittest.TestCase):
     def setUp(self):
         super().setUp(init_cache=False)
-        hostname = gethostname()
-        SshCache._local_class = Path
-        Path.setup(SshCache, SshRemoteFactory)  # if this doesn't break something I will be surprised
+        self.SshRemote = SshRemote._new(Path, SshCache)
+
         project_path = Path(self.test_path)
         self.project_path = project_path
         remote_root = PurePath(Path(__file__).parent)  # the 'remote' target
         remote_id = remote_root.as_posix()
-        anchor = project_path.cache_init(remote_id, anchor=True)  # this_folder.meta is sort of one extra level of host keys
+
+        hostname = gethostname()
+        # this_folder.meta is sort of one extra level of host keys
+        try:
+            anchor = project_path.cache_init(hostname + ':' + remote_id, anchor=True)
+        except TypeError:  # pxssh fail
+            anchor = project_path.cache_init(hostname + '-local:' + remote_id, anchor=True)
+
         # FIXME remote_root doesn't actually work for ssh remotes, it is always '/'
         #anchor = project_path.cache_init('/')  # this_folder.meta is sort of one extra level of host keys
-        try:
-            self.SshRemote = SshRemoteFactory(anchor, Path, hostname)
-        except TypeError:  # pxssh fail
-            self.SshRemote = SshRemoteFactory(anchor, Path, hostname + '-local')
         self.this_file = Path(__file__)
         self.this_file_darkly = self.SshRemote(__file__)
         tfd_cache = self.this_file_darkly.cache_init()

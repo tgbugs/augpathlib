@@ -13,9 +13,8 @@ from .common import (log,
                      test_base,
                      test_path,
                      TestPathHelper,
-                     TestLocalPath,
-                     TestCachePath,
-                     TestRemotePath)
+                     LocalPathTest,
+                     CachePathTest,)
 
 SymlinkCache._local_class = AugmentedPath  # have to set a default
 
@@ -154,18 +153,18 @@ class TestACachePath(unittest.TestCase):
             test_path.rmdir()
 
     def test_0_exists(self):
-        log.debug(TestCachePath.anchor)
-        assert not TestCachePath.anchor.is_symlink()
-        assert TestCachePath.anchor.meta is None
+        log.debug(CachePathTest.anchor)
+        assert not CachePathTest.anchor.is_symlink()
+        assert CachePathTest.anchor.meta is None
 
     def test_1_create(self):
-        wat = TestCachePath(test_path, meta=PathMeta(id='0'))
+        wat = CachePathTest(test_path, meta=PathMeta(id='0'))
         log.debug(wat)
         assert wat.meta
 
     def test_2_create_dir(self):
         test_path.mkdir()
-        wat = TestCachePath(test_path, meta=PathMeta(id='0'))
+        wat = CachePathTest(test_path, meta=PathMeta(id='0'))
         log.debug(wat)
         assert wat.meta
 
@@ -185,9 +184,9 @@ class TestPathMeta(unittest.TestCase):
     prefix = None
 
     def setUp(self):
-        self.path = TestLocalPath(project_path)
+        self.path = LocalPathTest(project_path)
 
-        self.test_path = TestLocalPath(test_base, 'testpath')  # FIXME random needed ...
+        self.test_path = LocalPathTest(test_base, 'testpath')  # FIXME random needed ...
         if self.test_path.is_symlink():
             self.test_path.unlink()
 
@@ -234,7 +233,7 @@ class TestPathMeta(unittest.TestCase):
         assert meta == new_meta, msg
 
     def _test_symlink_roundtrip_weird(self):
-        path = TestLocalPath(test_base, 'testpath')  # FIXME random needed ...
+        path = LocalPathTest(test_base, 'testpath')  # FIXME random needed ...
         meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
         pure_symlink = PurePosixPath(path.name) / meta.as_symlink()
         path.symlink_to(pure_symlink)
@@ -300,8 +299,8 @@ class TestContext(unittest.TestCase):
 
 class TestIdZero(TestPathHelper, unittest.TestCase):
     def test(self):
-        zt = TestLocalPath(test_path) / 'zero-test'
-        cache = TestCachePath(zt, meta=PathMeta(id='0'))
+        zt = LocalPathTest(test_path) / 'zero-test'
+        cache = CachePathTest(zt, meta=PathMeta(id='0'))
         assert cache.meta
 
 

@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import pathlib
+import warnings
 import mimetypes
 import subprocess
 from time import sleep
@@ -662,6 +663,12 @@ class LocalPath(EatPath, AugmentedPath):
     @classmethod
     def setup(cls, cache_class, remote_class_factory):
         """ call this once to bind everything together """
+
+        cn = self.__class__.__name__
+        warnings.warn(f'{cn}.setup is deprecated please switch to RemotePath._new',
+                      DeprecationWarning,
+                      stacklevel=2)
+
         cache_class.setup(cls, remote_class_factory)
 
     @property
@@ -686,7 +693,9 @@ class LocalPath(EatPath, AugmentedPath):
         return self._cache
 
     def cache_init(self, id_or_meta, anchor=False):
-        """ wow it took way too long to realize this was the way to do it >_< """
+        """ wow it took way too long to realize this was the way to do it >_<
+            **kwargs are passed to _cache_class and _remote_class.init """
+
         if self.cache and self.cache.meta:
             raise exc.CacheExistsError(f'{self.cache}\n'
                                        f'{self.cache.meta}')

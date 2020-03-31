@@ -25,29 +25,29 @@ SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or
 skipif_no_net = pytest.mark.skipif(SKIP_NETWORK, reason='Skipping due to network requirement')
 
 
-class TestLocalPath(LocalPath):
+class LocalPathTest(LocalPath):
     def metaAtTime(self, time):
         # we are cheating in order to do this
         return PathMeta(id=self._cache_class._remote_class.invAtTime(self, time))
 
 
-TestLocalPath._bind_flavours()
+LocalPathTest._bind_flavours()
 
 
-test_base = TestLocalPath(__file__).parent / 'test-base'
+test_base = LocalPathTest(__file__).parent / 'test-base'
 test_path = test_base / 'test-container'
 
 
-class TestCachePath(PrimaryCache, EatCache):
+class CachePathTest(PrimaryCache, EatCache):
     xattr_prefix = 'test'
     #_backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
 
 
-TestCachePath._bind_flavours()
+CachePathTest._bind_flavours()
 
 
-class TestRemotePath(RemotePath):
+class RemotePathTest(RemotePath):
     anchor = test_path
     ids = {0: anchor}  # time invariant
     dirs = {2, 3, 4, 8, 9, 11, 12, 13, 14, 16, 17, 18}
@@ -136,17 +136,17 @@ class TestRemotePath(RemotePath):
 
 
 # set up cache hierarchy
-TestLocalPath._cache_class = TestCachePath
-TestCachePath._local_class = TestLocalPath
-TestCachePath._remote_class = TestRemotePath
-TestRemotePath._cache_class = TestCachePath
+LocalPathTest._cache_class = CachePathTest
+CachePathTest._local_class = LocalPathTest
+CachePathTest._remote_class = RemotePathTest
+RemotePathTest._cache_class = CachePathTest
 
 # set up testing anchor (must come after the hierarchy)
-TestCachePath.anchor = test_path
+CachePathTest.anchor = test_path
 # note: the this creates a symlink which the rests of the tests expect
 if test_path.exists():
     test_path.rmtree(onerror=onerror)
-TestCachePath.anchor = TestCachePath(test_path, meta=PathMeta(id='0'))
+CachePathTest.anchor = CachePathTest(test_path, meta=PathMeta(id='0'))
 test_path.unlink()
 
 

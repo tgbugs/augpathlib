@@ -2,6 +2,7 @@ import os
 import sys
 import atexit
 import pathlib
+import warnings
 import subprocess
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
@@ -36,6 +37,9 @@ class RemotePath:
 
     @classmethod
     def _new(cls, local_class, cache_class):
+        """ when constructing a new remote using _new you MUST
+            call init afterward to bind the remote api """
+
         # FIXME 1:1ness issue from local -> cache
         # probably best to force the type of the cache
         # to switch if there are multiple remote mappings
@@ -43,7 +47,6 @@ class RemotePath:
         # path, a composite cache or a multi-remote cache
         # seems a bit saner, or require explicit switching of
         # the active remote if one-at-a-time semantics are desired
-        # see also the note RemoteFactory.__new__
 
         newcls = type(cls.__name__,
                       (cls,),
@@ -54,6 +57,9 @@ class RemotePath:
         local_class._cache_class = cache_class
         cache_class._remote_class = newcls
         cache_class._local_class = local_class
+
+        newcls.weighAnchor()
+        cache_class.weighAnchor()
 
         return newcls
 
@@ -68,13 +74,14 @@ class RemotePath:
             raise ValueError(f'{cls} already bound an api to {cls._api}')
 
     @classmethod
-    def anchorToCache(cls, cache_anchor):
+    def anchorToCache(cls, cache_anchor, init=True):
         # FIXME need to check for anchor after init and init after anchor
         if not hasattr(cls, '_cache_anchor'):
-            if not hasattr(cls, '_api'):
-                cls.init(cache_anchor.id)
+            if init:
+                if not hasattr(cls, '_api'):
+                    cls.init(cache_anchor.id)
 
-            if cls.root != cache_anchor.id:
+            if hasattr(cls, 'root') and cls.root != cache_anchor.id:
                 raise ValueError('root and anchor ids do not match! '
                                  f'{cls.root} != {cache_anchor.id}')
 
@@ -84,6 +91,10 @@ class RemotePath:
 
     @classmethod
     def anchorTo(cls, path, create=False):
+        """ You already know the rock you want and
+            you want the anchor stuck to it. """
+        # FIXME should we fail on create=True and exists?
+
         if isinstance(path, caches.CachePath):
             # FIXME the non-existence problem rears its head again
             cls.anchorToCache(path)
@@ -92,14 +103,15 @@ class RemotePath:
             if path.cache:
                 cls.anchorToCache(path.cache)
             else:
-                if path.name != cls.root.name:
+                root = cls.root if isinstance(cls.root, cls) else cls(cls.root)
+                if path.name != root.name:
                     # unlike git you cannot clone to a folder with a different
                     # name (for now ... maybe can figure out how in the future)
                     raise ValueError('Path name and root name do not match.'
                                      f'{path.name} != {cls.root.name}')
 
                 if create:
-                    cls.dropAnchor(path.parent)  # existing folder dealt with in dropAnchor
+                    return cls.dropAnchor(path.parent)  # existing folder dealt with in dropAnchor
                 else:
                     raise ValueError(f'not creating {path} since create=False')
         else:
@@ -146,7 +158,12 @@ class RemotePath:
     def dropAnchor(cls, parent_path=None):
         """ If a _cache_anchor does not exist then create it,
             otherwise raise an error. If a local anchor already
-            exists do not use this method. """
+            exists do not use this method.
+
+            You know that the ship (path) is more or less in the right
+            place but you don't know for sure exactly which rock the
+            anchor will catch on (you don't know the name of the remote).
+        """
         if not hasattr(cls, '_cache_anchor'):
             root, path = cls._get_local_root_path(parent_path)
             if not path.exists():
@@ -174,8 +191,28 @@ class RemotePath:
                                                  f'{cls._cache_anchor}')
 
     @classmethod
+    def weighAnchor(cls):
+        # TODO determine whether the current behavior is correct
+        # calling this will not cause the cache class to weigh anchor
+        # but there is a small chance that it should
+
+        # TODO is _abstract_class needed here? or do we not need it
+        # because remote paths don't have the crazy hierarchy that
+        # pathlib derived paths do? and will this change when we fix
+        # everything ...
+
+        if hasattr(cls, '_cache_anchor'):
+            delattr(cls, '_cache_anchor')
+
+    @classmethod
     def setup(cls, local_class, cache_class):
         """ call this once to bind everything together """
+
+        cn = self.__class__.__name__
+        warnings.warn(f'{cn}.setup is deprecated please switch to RemotePath._new',
+                      DeprecationWarning,
+                      stacklevel=2)
+
         cache_class.setup(local_class, cls)
 
     def bootstrap(self, recursive=False, only=tuple(), skip=tuple()):
@@ -425,50 +462,7 @@ class RemotePath:
         return f'{self.__class__.__name__}({self.id!r})'
 
 
-class RemoteFactory:
-    _api_class = None
-    @classmethod
-    def fromId(cls, identifier, cache_class, local_class):
-        # FIXME decouple class construction for identifier binding
-        # _api is not required at all and can be bound explicitly later
-        api = cls._api_class(identifier)
-        self = RemoteFactory.__new__(cls, local_class, cache_class, _api=api)
-        self._errors = []
-        self.root = self._api.root
-        log.debug('When initializing a remote using fromId be sure to set the cache anchor '
-                  'before doing anything else, otherwise you will have a baaad time')
-        return self
-
-    def ___new__(cls, *args, **kwargs):
-        # NOTE this should NOT be tagged as a classmethod
-        # it is accessed at cls time already and tagging it
-        # will cause it to bind to the original insource parent
-        self = super().__new__(cls)#, *args, **kwargs)
-        self._errors = []
-        return self
-
-    def __new__(cls, local_class, cache_class, **kwargs):
-        # TODO use this call to set the remote of local and cache??
-        kwargs['_local_class'] = local_class
-        kwargs['_cache_class'] = cache_class
-        newcls = cls._bindKwargs(**kwargs)
-        newcls.__new__ = cls.___new__
-        # FIXME klobbering and how to handle multiple?
-        local_class._remote_class = newcls
-        local_class._cache_class = cache_class
-        cache_class._remote_class = newcls
-        return newcls
-
-    @classmethod
-    def _bindKwargs(cls, **kwargs):
-        new_name = cls.__name__.replace('Factory','')
-        classTypeInstance = type(new_name,
-                                 (cls,),
-                                 kwargs)
-        return classTypeInstance
-
-
-class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
+class SshRemote(RemotePath, pathlib.PurePath):
     """ Testing. To be used with ssh-agent.
         StuFiS The stupid file sync. """
 
@@ -480,6 +474,16 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
 
     sysid = None
     _bind_sysid = classmethod(_bind_sysid_)
+
+    @classmethod
+    def _new(cls, local_class, cache_class):
+        newcls = super()._new(local_class, cache_class)
+
+        # must run before we can get the sysid, which is a bit odd
+        # given that we don't actually sandbox the filesystem
+
+        newcls._bind_flavours()
+        return newcls
 
     @classmethod
     def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
@@ -510,20 +514,27 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
 
         return pos, win
 
-    def ___new__(cls, *args, **kwargs):
-        # NOTE this should NOT be tagged as a classmethod
-        # it is accessed at cls time already and tagging it
-        # will cause it to bind to the original insource parent
-
-        if cls is cls.__abstractpath:
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_flavour'):
             cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
+
+        if isinstance(args[0], str) and args[0].startswith(cls.host + ':'):
+            # FIXME not great but allows less verbose where possible ...
+            # also possibly an opportunity to check if hostnames match?
+            # ugh unix everything is a stream of bytes is annoying here
+            _, *args = (args[0].split(':', 1), *args[1:])
 
         _self = pathlib.PurePath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
         _self.remote_platform = _self._remote_platform
         return _self
     
         # TODO this isn't quite working yet due to bootstrapping issues as usual
-        if _self.id != cls._cache_anchor.id:
+        # it also isn't working because we want access to all paths in many cases
+        # the root remains and the calculation against anchor remains for any
+        # relative path that is provided, and the default behavior for absolute
+        # paths protects us from sillyness
+
+        if _self.id != cls.root: #_cache_anchor.id:
             self = _self.relative_to(_self.anchor)
         else:
             self = pathlib.PurePath.__new__(cls, '.')  # FIXME make sure this is interpreted correctly ...
@@ -531,32 +542,38 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         self._errors = []
         return self
 
-    def __new__(cls, cache_anchor, local_class, host):
-        # TODO decouple _new from init here as well
-        if cls._cache_class is None:
-            cls._cache_class = caches.SshCache
+    @classmethod
+    def init(cls, host_path):
+        """ should only be invoked after _new has bound local and cache classes """
+        if not hasattr(cls, '_anchor'):
+            cls.root = host_path  # I think this is right ...
+            host, path = host_path.split(':', 1)
 
-        session = pxssh.pxssh(options=dict(IdentityAgent=os.environ.get('SSH_AUTH_SOCK')))
-        session.login(host, ssh_config=LocalPath('~/.ssh/config').expanduser().as_posix())
-        cls._rows = 200
-        cls._cols = 200
-        session.setwinsize(cls._rows, cls._cols)  # prevent linewraps of long commands
-        session.prompt()
-        atexit.register(lambda:(session.sendeof(), session.close()))
-        cache_class = cache_anchor.__class__
-        newcls = super().__new__(cls, local_class, cache_class,
-                                 host=host,
-                                 session=session)
-        newcls._uid, *newcls._gids = [int(i) for i in (newcls._ssh('echo $(id -u) $(id -G)')
-                                                       .decode().split(' '))]
+            if not hasattr(cls, '_flavour'):
+                cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
 
-        newcls._cache_anchor = cache_anchor
-        # must run before we can get the sysid, which is a bit odd
-        # given that we don't actually sandbox the filesystem
-        newcls._bind_flavours()
-        newcls._bind_sysid()
+            cls._anchor = pathlib.PurePath.__new__(cls, path)
 
-        return newcls
+            session = pxssh.pxssh(options=dict(IdentityAgent=os.environ.get('SSH_AUTH_SOCK')))
+            session.login(host, ssh_config=LocalPath('~/.ssh/config').expanduser().as_posix())
+            cls._rows = 200
+            cls._cols = 200
+            session.setwinsize(cls._rows, cls._cols)  # prevent linewraps of long commands
+            session.prompt()
+            atexit.register(lambda:(session.sendeof(), session.close()))
+            cls.host = host
+            cls.session = session
+            cls._uid, *cls._gids = [int(i) for i in (cls._ssh('echo $(id -u) $(id -G)')
+                                                    .decode().split(' '))]
+        else:
+            raise ValueError(f'{cls} already bound an remote to {cls._anchor}')
+
+    @classmethod
+    def anchorToCache(cls, cache_anchor, init=True):
+        super().anchorToCache(cache_anchor=cache_anchor, init=init)
+        # _cache_anchor has to be bound for _bind_sysid to work
+        # that binding happens after init so we do this here
+        cls._bind_sysid()
 
     def __init__(self, thing_with_id, cache=None):
         if isinstance(thing_with_id, pathlib.PurePath):
@@ -566,7 +583,8 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
 
     @property
     def anchor(self):
-        return self._cache_anchor.remote
+        return self._anchor
+        #return self._cache_anchor.remote
         # FIXME warning on relative paths ...
         # also ... might be convenient to allow
         # setting non-/ anchors, but perhaps for another day
@@ -587,9 +605,14 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         # conveniently in this case if self is a fully rooted path then
         # it will overwrite the anchor path
         # TODO make sure that the common path is the anchor ...
-        return (self._cache_anchor.remote / self).as_posix()
+        return (self.anchor / self).as_posix()
 
     def _parts_relative_to(self, remote, cache_parent=None):
+        if remote == self.anchor:
+            # have to build from self.anchor._parts because it is the only
+            # place the keeps the original parts
+            remote = pathlib.PurePath(*self.anchor._parts)
+
         return self.relative_to(remote).parts
 
     def refresh(self):
@@ -769,4 +792,4 @@ class SshRemoteFactory(RemoteFactory, pathlib.PurePath, RemotePath):
         return f'{self.__class__.__name__}({self.rpath!r}, host={self.host!r})'
 
 
-SshRemoteFactory._bind_flavours()
+SshRemote._bind_flavours()

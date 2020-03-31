@@ -1,6 +1,6 @@
 import unittest
 from augpathlib import exceptions as exc
-from .common import TestPathHelper, TestLocalPath, TestCachePath, TestRemotePath
+from .common import TestPathHelper, LocalPathTest, CachePathTest, RemotePathTest
 from .common import log
 
 
@@ -22,16 +22,16 @@ class TestMove(TestPathHelper, unittest.TestCase):
     def _test_move(self, source, target, target_exists=False):
         s = self.test_path / source
         t = self.test_path / target
-        #remote = TestRemotePath.invAtTime(1)
-        caches = list(self._mkpath(s, 1, int(s.metaAtTime(1).id) in TestRemotePath.dirs))
+        #remote = RemotePathTest.invAtTime(1)
+        caches = list(self._mkpath(s, 1, int(s.metaAtTime(1).id) in RemotePathTest.dirs))
         if target_exists:  # FIXME and same id vs and different id
-            target_caches = list(self._mkpath(t, 2, int(t.metaAtTime(2).id) in TestRemotePath.dirs))
+            target_caches = list(self._mkpath(t, 2, int(t.metaAtTime(2).id) in RemotePathTest.dirs))
 
         cache = caches[-1]
         meta = t.metaAtTime(2)
         log.debug(f'{source} -> {target} {cache.meta} {meta}')
         cache.move(target=t, meta=meta)
-        assert t.cache.id == TestRemotePath.invAtTime(t, 2)
+        assert t.cache.id == RemotePathTest.invAtTime(t, 2)
 
     def test_0_0_test_cache_local(self):
         c = self.test_path.cache

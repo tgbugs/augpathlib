@@ -16,7 +16,7 @@ EatXopenPath._bind_flavours()
 
 
 class TestEat(unittest.TestCase):
-    test_class = EatPath
+    _test_class = EatPath
     @classmethod
     def setUpClass(cls):
         sandbox.mkdir(parents=True)
@@ -26,12 +26,12 @@ class TestEat(unittest.TestCase):
         sandbox.rmtree(onerror=onerror)
     
     def setUp(self):
-        self.dir = self.test_class(sandbox, 'some-dir')
+        self.dir = self._test_class(sandbox, 'some-dir')
         if self.dir.exists():
             self.dir.rmtree(onerror=onerror)
         self.dir.mkdir()
 
-        self.file = self.test_class(sandbox, 'some-file')
+        self.file = self._test_class(sandbox, 'some-file')
         if self.file.exists() :
             self.file.unlink()
         self.file.touch()
@@ -66,4 +66,4 @@ class TestEat(unittest.TestCase):
 
 
 class TestEatXopen(TestEat):
-    test_class = EatXopenPath
+    _test_class = EatXopenPath

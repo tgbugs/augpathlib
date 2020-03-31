@@ -1,4 +1,5 @@
 import pathlib
+import warnings
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.core import AugmentedPath, EatHelper
@@ -41,6 +42,12 @@ class CachePath(AugmentedPath):
     @classmethod
     def setup(cls, local_class, remote_class_factory):
         """ call this once to bind everything together """
+
+        cn = self.__class__.__name__
+        warnings.warn(f'{cn}.setup is deprecated please switch to RemotePath._new',
+                      DeprecationWarning,
+                      stacklevel=2)
+
         cls._local_class = local_class
         cls._remote_class_factory = remote_class_factory
         local_class._cache_class = cls
@@ -53,17 +60,25 @@ class CachePath(AugmentedPath):
 
     @classmethod
     def weighAnchor(cls):
-        # FIXME should this return the old anchor?
+        # return a value to indicate that there was an anchor since
+        # we no longer error when already underway
         acls = cls._abstract_class()
         if hasattr(acls, '_anchor'):
-            delattr(acls, '_anchor')
-        else:
-            raise ValueError(f'{self.__class__} not anchored')
+            return delattr(acls, '_anchor')
 
-    def anchorClassHere(self):
+    def anchorClassHere(self, remote_init=True):
         """ Use this to initialize the class level anchor from an instance. """
+
+        # FIXME WARNING you can shoot yourself in the foot with this if
+        # there is another anchor further up the tree from this one
+        # FIXME further, this means that there has to have been a way
+        # to construct a live CachePath by sideloading the remote id
+        # which is OK for the path where local/remote binding has already
+        # been completed
         if not hasattr(self.__class__, '_anchor'):
             self.__class__._abstract_class()._anchor = self
+            self._remote_class.anchorToCache(self, init=remote_init)
+
         else:
             raise ValueError(f'{self.__class__} already anchored to {self.__class__._anchor}')
 
@@ -559,6 +574,7 @@ class CachePath(AugmentedPath):
         if root is None:
             #breakpoint()
             raise exc.NotInProjectError(f'{self.parent.local} is not in a project!')
+
         breakpoint()
         raise NotImplementedError()
         children = list(self.parent.remote.children)  # if this is run from dismatch meta we have issues
@@ -620,6 +636,7 @@ class CachePath(AugmentedPath):
     def refresh(self, update_data=False, size_limit_mb=2, force=False):
         if self.meta is None:
             breakpoint()
+
         limit = (size_limit_mb if
                  not self.meta.size or (size_limit_mb > self.meta.size.mb)
                  else self.meta.size.mb + 1)
@@ -1124,6 +1141,12 @@ class SshCache(PrimaryCache, EatCache):
     _backup_cache = SqliteCache
     _not_exists_cache = SymlinkCache
     cypher = default_cypher
+
+    # FIXME probably need a way to dispatch to multiple remotes
+    # based on that prefix, since the id actually determines the
+    # remote class in this case since the class maintains the session
+    # after init, the hostname is materialized into the id to disambiguate
+    # the local path specifications
 
     @property
     def anchor(self):
