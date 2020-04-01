@@ -77,6 +77,7 @@ class CachePath(AugmentedPath):
         # been completed
         if not hasattr(self.__class__, '_anchor'):
             self.__class__._abstract_class()._anchor = self
+            self.local_data_dir_init()  # call every time for insurance
             self._remote_class.anchorToCache(self, init=remote_init)
 
         else:
