@@ -96,6 +96,13 @@ class NoRemoteFileWithThatIdError(AugPathlibError):
     """ the file you are trying to reach has been disconnected """
 
 
+class CacheNotFoundError(AugPathlibError):
+    """ no local cache and no remote cache for file
+
+        use this to provide the local path dual of a remote
+        for better error reporting """
+
+
 class WhyDidntThisGetMovedBeforeError(AugPathlibError):
     """ file should already have been moved ... """
 
@@ -119,3 +126,8 @@ class RemoteAlreadyAnchoredError(AugPathlibError):
 
 class CacheExistsError(AugPathlibError):
     """ attempting to init a cache that already exists """
+
+
+class FileHasNotChangedError(AugPathlibError):
+    """ signal cases where a file has not changed
+        and thus that no action will be taken """

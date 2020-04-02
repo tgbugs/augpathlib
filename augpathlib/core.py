@@ -18,6 +18,7 @@ except (ImportError, TypeError) as e:
 #import psutil  # import for experimental xopen functionality
 #from Xlib.display import Display
 #from Xlib import Xatom
+import augpathlib as aug
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.utils import log, default_cypher, StatResult, etag
@@ -670,6 +671,13 @@ class LocalPath(EatPath, AugmentedPath):
                       stacklevel=2)
 
         cache_class.setup(cls, remote_class_factory)
+
+    #def __truediv__(self, other):
+        # TODO need a way to get the remote relative to the anchor for this
+        #if isinstance(other, aug.RemotePath):
+            #super().__truediv__(other.as_path())
+        #else:
+            #super().__truediv__(other)
 
     @property
     def remote(self):

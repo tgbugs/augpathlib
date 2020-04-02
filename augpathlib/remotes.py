@@ -304,6 +304,70 @@ class RemotePath:
                 raise e
 
     @property
+    def parent_id(self):
+        """ BEWARE if self.parent hits the network so will this.
+            In the event that it does, overwrite this method. """
+
+        return self.parent.id
+
+    def _parent_changed(self, cache):
+        return self.parent_id != cache.parent.id
+
+    def _on_cache_move_error(self, error, cache):
+        """ called after a failure to move a cached file to a new location """
+        raise error
+
+    def update_cache(self, cache=None, fetch=True):
+        """ Update a cache object using the metadata attached to this remote.
+
+            This is different form _cache_setter in that it runs update_meta
+            by default, handles many more edge cases, and checks for consistency.
+            _cache_setter is usually invoked internally by a CachePath method that
+            wants to register itself with a remote as an implementaiton detail. """
+
+        if cache is not None and self.cache is not None:
+            # TODO see if there are any exceptions to this behavior
+            raise TypeError('cannot accept cache kwarg when self.cache not None')
+        elif cache is None:
+            cache = self.cache
+
+        parent_changed = self._parent_changed(cache)
+
+        if self.cache is None:
+            # HACK test if cache is not None before it may have been reassigned
+            if cache.name != self.name:
+                msg = ('Cannot update the name and content of a file at the '
+                       'same time.\nAre you sure you have passed the right '
+                       f'cache object?\n{cache.name} != {self.name}')
+                raise ValueError(msg)
+
+            elif parent_changed:
+                msg = ('Cannot update the parent and content of a file at the '
+                       'same time.\nAre you sure you have passed the right '
+                       f'cache object?\n{cache.parent.id} != {self.parent_id}')
+                raise ValueError(msg)
+
+        log.debug(f'maybe updating cache for {self.name}')
+        file_is_different = cache._meta_updater(self.meta, fetch=fetch)
+        # update the cache first  # FIXME this may be out of order ...
+        # then move to the new name if relevant
+        # prevents moving partial metadata onto existing files
+        if cache.name != self.name or parent_changed:  # this is localy correct
+            # the issue is that move is now smarter
+            # and will detect if a parent path has changed
+            try:
+                cache.move(remote=self)
+            except exc.WhyDidntThisGetMovedBeforeError as e:
+                # AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                # deal with the sadness that is non-unique filenames
+                # I am 99.999999999999999% certain that users do not
+                # expect this behavior ...
+                log.error(e)
+                self._on_cache_move_error(e, cache)
+
+        return file_is_different
+
+    @property
     def local(self):
         return self.cache.local  # FIXME there are use cases for bypassing the cache ...
 
@@ -594,6 +658,11 @@ class SshRemote(RemotePath, pathlib.PurePath):
     def id(self):
         return f'{self.host}:{self.rpath}'
         #return self.host + ':' + self.as_posix()  # FIXME relative to anchor?
+
+    @property
+    def cache_key(self):
+        """ since some systems have compound ids ... """
+        raise NotImplementedError
 
     @property
     def rpath(self):

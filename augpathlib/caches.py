@@ -181,13 +181,17 @@ class CachePath(AugmentedPath):
         # modify new to never call it again?
         self.local_data_dir.mkdir(exist_ok=exist_ok)
         self.local_objects_dir.mkdir(exist_ok=exist_ok)
-        self.trash.mkdir(exist_ok=exist_ok)
+        try:
+            self.trash.mkdir(exist_ok=exist_ok)
+        except NotImplementedError:
+            # if there's no trash, there's no trash
+            pass
 
     @property
     def is_helper_cache(self):
         return hasattr(self, '_cache_parent')
 
-    def __truediv__(self, key):
+    def __truediv__(self, key, update_meta=True):
         # basically RemotePaths are like relative CachePaths ... HRM
         # they are just a name and an id ... the id of their parent
         # root needs to match the id of the cache ... which it usually
@@ -196,7 +200,9 @@ class CachePath(AugmentedPath):
             # FIXME not just names but relative paths???
             remote = key
             try:
-                child = self._make_child(remote._parts_relative_to(self.remote, self.parent), remote)
+                child = self._make_child(
+                    remote._parts_relative_to(self.remote, self.parent),
+                    remote, update_meta=update_meta)
             except AttributeError as e:
                 raise exc.AugPathlibError('aaaaaaaaaaaaaaaaaaaaaa') from e
 
@@ -215,14 +221,14 @@ class CachePath(AugmentedPath):
         #out._meta_setter(cache.meta)
         return out
 
-    def _make_child(self, args, remote):
+    def _make_child(self, args, remote, update_meta=True):
         drv, root, parts = self._parse_args(args)
         drv, root, parts = self._flavour.join_parsed_parts(
             self._drv, self._root, self._parts, drv, root, parts)
         child = self._from_parsed_parts(drv, root, parts, init=False)  # short circuits
         child._init()
         if isinstance(remote, remotes.RemotePath):
-            remote._cache_setter(child)
+            remote._cache_setter(child, update_meta=update_meta)
         else:
             raise ValueError('should not happen')
 
@@ -780,6 +786,10 @@ class CachePath(AugmentedPath):
                   if self.remote else str(self.id))
         return self.__class__.__name__ + ' <' + local + ' -> ' + remote + '>'
 
+    @property
+    def data(self):
+        raise NotImplementedError('implement in subclass')
+
 
 CachePath._bind_flavours()
 
@@ -1071,10 +1081,11 @@ class PrimaryCache(CachePath):
 
         return file_is_different, PathMeta(**kwargs)
 
-    def _meta_updater(self, pathmeta):
+    def _meta_updater(self, pathmeta, fetch=True):
         original = self.meta
         file_is_different, updated = self._update_meta(original, pathmeta)
-        must_fetch = file_is_different and self.is_file() and self.exists()
+        # FIXME missing checksum is one source of problems here
+        must_fetch = file_is_different and self.is_file() and self.exists() and fetch
 
         if must_fetch:
             try:
@@ -1148,6 +1159,8 @@ class SshCache(PrimaryCache, EatCache):
     # remote class in this case since the class maintains the session
     # after init, the hostname is materialized into the id to disambiguate
     # the local path specifications
+
+    checksum = AugmentedPath.checksum
 
     @property
     def anchor(self):
