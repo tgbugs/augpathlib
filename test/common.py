@@ -16,8 +16,9 @@ log = aug.utils.log.getChild('test')
 
 onerror = onerror_windows_readwrite_remove if os.name == 'nt' else None
 
+_pid = os.getpid()
 this_file = LocalPath(__file__)
-temp_path = aug.AugmentedPath(gettempdir(), f'.augpathlib-testing-base-{os.getpid()}')
+temp_path = aug.AugmentedPath(gettempdir(), f'.augpathlib-testing-base-{_pid}')
 project_path = this_file.parent / 'test_local/test_project'
 
 SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or
@@ -34,7 +35,7 @@ class LocalPathTest(LocalPath):
 LocalPathTest._bind_flavours()
 
 
-test_base = LocalPathTest(__file__).parent / 'test-base'
+test_base = LocalPathTest(__file__).parent / f'test-base-{_pid}'
 test_path = test_base / 'test-container'
 
 
