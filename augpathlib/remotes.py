@@ -133,7 +133,7 @@ class RemotePath:
         # work around the suspect logic
         # in the implementation below
         try:
-            cls.dropAnchor(parent_path=parent_path)
+            return cls.dropAnchor(parent_path=parent_path)
         except exc.RemoteAlreadyAnchoredError as e:
             root, path = cls._get_local_root_path(parent_path)
             if cls._cache_anchor == path.cache:
@@ -856,6 +856,9 @@ class SshRemote(RemotePath, pathlib.PurePath):
                       for cs, fn in (l.decode(self.encoding).split('  ', 1),)}
 
             return stats, checks  # TODO
+
+    def _mkdir_child(self, child_name):
+        raise NotImplementedError('implement in subclass and/or fix instantiation/existence issues')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.rpath!r}, host={self.host!r})'

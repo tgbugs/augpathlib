@@ -758,8 +758,10 @@ class LocalPath(EatPath, AugmentedPath):
             # just act like paths rathern than forcing them to exist which causes all
             # sorts of awkwardness, including the RemoteMaybeExists issue
             self.mkdir(exist_ok=True)
-            self.cache_init(remote.meta)
-            remote._cache = self.cache
+            if remote.cache is None:
+                self.cache_init(remote.meta)
+                remote._cache = self.cache
+
             return remote
 
         elif parents:
