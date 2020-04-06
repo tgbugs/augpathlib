@@ -285,6 +285,8 @@ class RemotePath:
     def _cache(self, cache):
         if not isinstance(cache, caches.CachePath):
             raise TypeError(f'cache is a {type(cache)} not a CachePath!')
+        #elif cache.meta is None:  # useful for certain debugging situations
+            #raise ValueError(f'cache has no meta {cache}')
 
         self._c_cache = cache
 
@@ -458,7 +460,12 @@ class RemotePath:
                     log.error(msg)
                     #raise ValueError()
 
-        args = (*reversed(parent_names), self.name)
+            args = (*reversed(parent_names), self.name)
+        elif self == parent:
+            args = ('',)
+        else:
+            args = self.name,
+
         return args
 
     @property

@@ -196,12 +196,13 @@ class CachePath(AugmentedPath):
         # they are just a name and an id ... the id of their parent
         # root needs to match the id of the cache ... which it usually
         # does by construction
+        parent = self.parent if self.parent.meta is not None else self  # FIXME should be in def parent ???
         if isinstance(key, remotes.RemotePath):
             # FIXME not just names but relative paths???
             remote = key
             try:
                 child = self._make_child(
-                    remote._parts_relative_to(self.remote, self.parent),
+                    remote._parts_relative_to(self.remote, parent),
                     remote, update_meta=update_meta)
             except AttributeError as e:
                 raise exc.AugPathlibError('aaaaaaaaaaaaaaaaaaaaaa') from e
@@ -700,7 +701,7 @@ class CachePath(AugmentedPath):
         # deal with moving to a different directory that might not even exist yet
         if target is None:
             if not isinstance(self.anchor, self.__class__):
-                raise TypeError('mismatched anchor types {self!r} {self.anchor!r}')
+                raise TypeError(f'mismatched anchor types {self!r} {self.anchor!r}')
 
             target = self.anchor / remote  # FIXME why does this not try to instantiate the caches? or does it?
 
