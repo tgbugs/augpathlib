@@ -86,6 +86,7 @@ class RemotePath:
                                  f'{cls.root} != {cache_anchor.id}')
 
             cls._cache_anchor = cache_anchor
+            return cls._cache_anchor
         else:
             raise ValueError(f'already anchored to {cls._cache_anchor}')
 
@@ -97,11 +98,11 @@ class RemotePath:
 
         if isinstance(path, caches.CachePath):
             # FIXME the non-existence problem rears its head again
-            cls.anchorToCache(path)
+            return cls.anchorToCache(path)
         elif isinstance(path, LocalPath):
             # FIXME the non-existence problem rears its head again
             if path.cache:
-                cls.anchorToCache(path.cache)
+                return cls.anchorToCache(path.cache)
             else:
                 root = cls.root if isinstance(cls.root, cls) else cls(cls.root)
                 if path.name != root.name:
@@ -641,10 +642,11 @@ class SshRemote(RemotePath, pathlib.PurePath):
 
     @classmethod
     def anchorToCache(cls, cache_anchor, init=True):
-        super().anchorToCache(cache_anchor=cache_anchor, init=init)
+        anchor = super().anchorToCache(cache_anchor=cache_anchor, init=init)
         # _cache_anchor has to be bound for _bind_sysid to work
         # that binding happens after init so we do this here
         cls._bind_sysid()
+        return anchor
 
     def __init__(self, thing_with_id, cache=None):
         if isinstance(thing_with_id, pathlib.PurePath):
