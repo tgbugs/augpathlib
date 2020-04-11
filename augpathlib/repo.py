@@ -167,6 +167,13 @@ class RepoHelper:
         except StopIteration as e:
             raise exc.NoCommitsForFile(self) from e
 
+    def commits(self, *, rev=None, max_count=None):
+        yield from self.repo.iter_commits(
+            rev=rev,
+            paths=self.expanduser().resolve().as_posix(),
+            # TODO --follow
+            max_count=max_count)
+
     # a variety of change detection
 
     def modified(self):
