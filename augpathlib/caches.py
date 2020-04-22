@@ -686,7 +686,7 @@ class CachePath(AugmentedPath):
                 self.touch()
                 self._meta_setter(meta)
 
-            log.info(f'Fetching from cache id {self.id} -> {self.local}')
+            log.info(f'Fetching remote via cache id {self.id} -> {self.local}')
             self.local.data = self.data  # note that this should trigger storage to .ops/objects
 
         if size_not_ok:
