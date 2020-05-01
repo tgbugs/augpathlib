@@ -216,12 +216,12 @@ class RemotePath:
 
         cache_class.setup(local_class, cls)
 
-    def bootstrap(self, recursive=False, only=tuple(), skip=tuple()):
+    def bootstrap(self, recursive=False, only=tuple(), skip=tuple(), sparse=tuple()):
         #self.cache.remote = self  # duh
         # if you forget to tell the cache you exist of course it will go to
         # the internet to look for you, it isn't quite smart enough and
         # we're trying not to throw dicts around willy nilly here ...
-        return self.cache.bootstrap(self.meta, recursive=recursive, only=only, skip=skip)
+        return self.cache.bootstrap(self.meta, recursive=recursive, only=only, skip=skip, sparse=sparse)
 
     def __init__(self, thing_with_id, cache=None):
         if isinstance(thing_with_id, str):
@@ -273,8 +273,20 @@ class RemotePath:
 
             return NullCache()
 
-    def cache_init(self):
-        return self._cache_anchor / self
+    def cache_init(self, parents=False):
+        try:
+            return self._cache_anchor / self
+        except FileNotFoundError:
+            if parents:
+                #parent, *rest = self.parent.cache_init(parents=parents)
+                #return (self.cache_init(), parent, *rest)
+                parent = self.parent
+                parent_cache = parent.cache_init(parents=parents)
+                parent_cache.local.cache_init(parent.meta) # FIXME hrm we shouldn't have to do this
+                # and it isn't working anyway ... the xattrs don't seem to be getting set
+                return self.cache_init()
+            else:
+                raise
 
     @property
     def _cache(self):

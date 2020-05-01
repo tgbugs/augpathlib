@@ -700,6 +700,11 @@ class LocalPath(EatPath, AugmentedPath):
 
         return self._cache
 
+    @property
+    def cache_id(self):
+        """ abstraction violating but fast way to get cache.id """
+        raise NotImplementedError('implement in subclass')
+
     def cache_init(self, id_or_meta, anchor=False):
         """ wow it took way too long to realize this was the way to do it >_<
             **kwargs are passed to _cache_class and _remote_class.init """

@@ -241,7 +241,8 @@ class CachePath(AugmentedPath):
                   fetch_data=False,
                   size_limit_mb=2,
                   only=tuple(),
-                  skip=tuple()):
+                  skip=tuple(),
+                  sparse=tuple(),):
         try:
             self._in_bootstrap = True
             return  list(self._bootstrap(meta,
@@ -250,7 +251,8 @@ class CachePath(AugmentedPath):
                                          fetch_data=fetch_data,
                                          size_limit_mb=size_limit_mb,
                                          only=only,
-                                         skip=skip))
+                                         skip=skip,
+                                         sparse=sparse,))
         finally:
             delattr(self, '_in_bootstrap')
             if hasattr(self, '_meta'):
@@ -262,14 +264,15 @@ class CachePath(AugmentedPath):
                    size_limit_mb=2,
                    recursive=False,
                    only=tuple(),
-                   skip=tuple()):
+                   skip=tuple(),
+                   sparse=tuple(),):
         """ The actual bootstrap implementation """
 
         # figure out if we are actually bootstrapping this class or skipping it
         if not meta or meta.id is None:
             raise exc.BootstrappingError(f'PathMeta to bootstrap from has no id! {meta}')
 
-        if only or skip:
+        if only or skip or sparse:
             if meta.id.startswith('N:organization:'):  # FIXME :/
                 # since we only go one organization at a time right now
                 # we never want to skip the top level id
@@ -281,8 +284,13 @@ class CachePath(AugmentedPath):
                 log.info(f'Skipped       {meta.id} since it is not in only')
                 return
             else:
-                # if you pass the only mask so do your children
-                log.info(f'Bootstrapping {meta.id} -> {self.local!r}')
+                if sparse and meta.id in sparse:
+                    log.info(f'Sparse strap  {meta.id} -> {self.local!r}')
+                    sparse = True
+                else:
+                    # if you pass the only mask so do your children
+                    log.info(f'Bootstrapping {meta.id} -> {self.local!r}')
+
                 only = tuple()
 
         if self.meta is not None and not recursive:
@@ -298,29 +306,47 @@ class CachePath(AugmentedPath):
             # directory, file, or fake file as symlink?
             is_file_and_fetch_data = self._bootstrap_prepare_filesystem(parents,
                                                                         fetch_data,
-                                                                        size_limit_mb)
+                                                                        size_limit_mb,
+                                                                        sparse,)
 
-            #self.meta = self.remote.meta
+            is_file_and_fetch_data = False  # XXX NOTE _bootstrap_prepare_filesystem always returns None
+            # remove this static assignment to False if there is a use case for bootstrapping the data
             self._bootstrap_data(is_file_and_fetch_data)
 
         if recursive:  # ah the irony of using loops to do this
-            yield from self._bootstrap_recursive(only, skip)
+            yield from self._bootstrap_recursive(only, skip, sparse)
 
         yield self
 
-    def _bootstrap_recursive(self, only=tuple(), skip=tuple()):
+    def _bootstrap_recursive(self, only=tuple(), skip=tuple(), sparse=False):
         # TODO if rchildren looks like it could be bad
         # go back up to dataset level?
-        sname = lambda gen: sorted(gen, key=lambda c: c.name)
-        rcs = sname(self.remote._rchildren(create_cache=False))
+        if sparse:
+            rcs = self.remote._rchildren(create_cache=False)  # TODO use packages endpoint that can match filenames ?
+        else:
+            sname = lambda gen: sorted(gen, key=lambda c: c.name)
+            rcs = sname(self.remote._rchildren(create_cache=False))  # TODO consider using the match tools
+
         local_paths = list(self.local.rchildren)
         local_files = set(p for p in local_paths if p.is_file() or p.is_broken_symlink())
-        file_index = {f.cache.id:f for f in local_files}  # FIXME WARNING can get big
+        file_index = {f.cache_id:f for f in local_files}  # FIXME WARNING can get big
         # FIXME have to compute file_index here because for some reason
         # computing local_dirs will remove folders entirely !??
         local_dirs = set(p.relative_to(self.anchor) for p in local_paths if p.is_dir())
         if local_dirs:
-            remote_dirs = set(c for c in rcs if c.is_dir())
+            if sparse:
+                _parents = set()
+                for d in local_dirs:
+                    p = d.parent
+                    if p in local_dirs and p not in _done:
+                        _parents.add(p)
+
+                _local_remotes = set(c for p in _parents for c in p.remote.children)  # TODO Async
+
+                remote_dirs = set(c for c in _local_remotes if c.is_dir())
+            else:
+                remote_dirs = set(c for c in rcs if c.is_dir())
+
             rd = set(d.as_path() for d in remote_dirs)
             old_local = local_dirs - rd
             while old_local:
@@ -336,7 +362,18 @@ class CachePath(AugmentedPath):
                                     if not ld.as_posix().startswith(d.as_posix()))
                     old_local = local_dirs - rd
 
-        for child in sorted(rcs, key=lambda c: len(c.as_path().as_posix())):
+        if sparse:
+            if local_dirs:
+                gen = (c for c in _local_remotes if c.is_file() and c._sparse_include())
+            else:
+                gen = (c for c in rcs if c.is_file() and c._sparse_include())
+                # FIXME rcs still takes too long, though using the generator
+                # does get some useful work does first
+        else:
+            # FIXME horrid performance on remotes with loads of files
+            gen = sorted(rcs, key=lambda c: len(c.as_path().as_posix()))
+
+        for child in gen:
             # use the remote's recursive implementation
             # not the local implementation, since the
             # remote may have additional requirements
@@ -344,6 +381,7 @@ class CachePath(AugmentedPath):
             # because of how remote works now we don't even have to
             # bootstrap this
             cc = child.cache
+
             if cc is None:
                 if child.is_file() and child.id in file_index:
                     _cache = file_index[child.id].cache
@@ -359,14 +397,15 @@ class CachePath(AugmentedPath):
                         # think the file may have been deleted
                         continue
 
-                cc = child.cache_init()
+                cc = child.cache_init(parents=sparse)  # under sparse have to create parents ourselves
+                log.debug(cc)
 
             yield cc
 
-    def _bootstrap_prepare_filesystem(self, parents, fetch_data, size_limit_mb):
+    def _bootstrap_prepare_filesystem(self, parents, fetch_data, size_limit_mb, sparse=False):
         # we could use bootstrapping id here and introspect the id, but that is cheating
         if self.remote.is_dir():
-            if not self.exists():
+            if not sparse and not self.exists():
                 # the bug where this if statement put in as an and is a really
                 # good example of how case/cond etc help you reasona about what
                 # a block of branches is really doing -- this one was implementing
@@ -376,6 +415,9 @@ class CachePath(AugmentedPath):
                 self.mkdir(parents=parents)
 
         elif self.remote.is_file():
+            if sparse and not self._sparse_include():
+                return
+
             if not self.parent.exists():
                 self.parent.mkdir(parents=parents)
 
@@ -394,7 +436,8 @@ class CachePath(AugmentedPath):
         else:
             raise BaseException(f'Remote is not a file or directory {self}')
 
-    def _bootstrap_data(self, is_file_and_fetch_data):
+    def _bootstrap_data(self, is_file_and_fetch_data=False):
+        """ XXX UNUSED """
         if is_file_and_fetch_data:
             if self.remote.meta.size is None:
                 self.remote.refresh(update_cache=True)
@@ -403,6 +446,9 @@ class CachePath(AugmentedPath):
             # with open -> write should not cause the inode to change
 
             self.validate_file()
+
+    def _sparse_include(self):
+        raise NotImplementedError('implement in subclass')
 
     def validate_file(self):
         meta = self.meta
