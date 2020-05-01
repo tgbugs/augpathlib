@@ -563,11 +563,13 @@ class AugmentedPath(pathlib.Path):
         if not target.is_dir():
             raise NotADirectoryError(f'{target} is not a directory')
 
-        self.copy_to(target / self.name)
+        target_file = target / self.name
+        self.copy_to(target_file)
+        return target_file
 
     def copy_infrom(self, source, force=False):
         """ copy into the current directory a file from somewhere else """
-        source.copy_outto(self, force=force)
+        return source.copy_outto(self, force=force)
 
 
 class AugmentedPathPosix(AugmentedPath, pathlib.PosixPath): pass
