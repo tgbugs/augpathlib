@@ -524,7 +524,7 @@ class AugmentedPath(pathlib.Path):
                 # python-magic
                 return magic.from_file(self.as_posix(), mime=True)
 
-    def checksum(self, cypher=default_cypher):
+    def checksum(self, cypher=default_cypher, extra_cyphers=tuple()):
         """ checksum() always recomputes from the data
             meta.checksum is static for cache and remote IF it exists """
 
@@ -539,10 +539,16 @@ class AugmentedPath(pathlib.Path):
                 cypher = self.cypher
 
             m = cypher()
+            extra = [c() for c in extra_cyphers]
             for chunk in self.data:
                 m.update(chunk)
+                for me in extra:
+                    me.update(chunk)
 
-            return m.digest()
+            if extra_cyphers:
+                return tuple(_.digest() for _ in (m, *extra))
+            else:
+                return m.digest()
 
     def copy_to(self, target, force=False):
         """ copy from a the current path object to a target path """
@@ -564,7 +570,7 @@ class AugmentedPath(pathlib.Path):
             raise NotADirectoryError(f'{target} is not a directory')
 
         target_file = target / self.name
-        self.copy_to(target_file)
+        self.copy_to(target_file, force=force)
         return target_file
 
     def copy_infrom(self, source, force=False):
