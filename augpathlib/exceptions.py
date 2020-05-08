@@ -120,6 +120,10 @@ class NoCommitsForFile(AugPathlibError):
     """ could not find any commits for file """
 
 
+class InvalidRefError(AugPathlibError):
+    """ ref.is_valid() returned False """
+
+
 class RemoteAlreadyAnchoredError(AugPathlibError):
     """ a Remote class has already been anchored locally """
 

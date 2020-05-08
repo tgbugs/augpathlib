@@ -119,6 +119,47 @@ class TestRepoPath(unittest.TestCase):
         m = rp.remote_uri_machine('master')
         assert h != m  # TODO probably need a better test here
 
+    def test_repo_context(self):
+        rp = testing_base / 'test-repo-context'
+        rp.init()
+        rp.repo.git.commit(message='Inital commit', allow_empty=True)
+        ref_target = 'ref-target'
+        rp.repo.create_head(ref_target)
+
+        test_byte1 = b'\x98'
+        test_byte2 = b'\x99'
+        test_byte3 = b'\x97'
+        test_byte4 = b'\x96'
+
+        tc = rp / 'test-committed'
+        with open(tc, 'wb') as f:
+            f.write(test_byte1)
+
+        tc.commit_from_working_tree("test byte one")
+
+        tu = rp / 'test-uncommitted'
+        with open(tu, 'wb') as f:
+            f.write(test_byte2)
+
+        with rp.repo.getRef(ref_target):
+            # this will cause an error I'm sure ...
+            # will have to reorder the stack in this case
+            # numerous types of errors we can expect here
+            '''
+            git.exc.GitCommandError: Cmd('git') failed due to: exit code(1)
+              cmdline: git checkout master
+              stderr: 'error: The following untracked working tree files would be overwritten by checkout:
+            	test-committed
+            Please move or remove them before you switch branches.
+            Aborting'
+            '''
+
+            with open(tc, 'wb') as f:
+                f.write(test_byte3)
+
+            with open(tu, 'wb') as f:
+                f.write(test_byte4)
+
 
 class TestComplex(unittest.TestCase):
     test_file = 'test-file'
