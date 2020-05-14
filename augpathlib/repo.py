@@ -187,6 +187,8 @@ class RepoHelper:
 
             return path.relative_to(repo.working_dir)
 
+    path_relative_repo = repo_relative_path
+
     def _remote_uri(self, prefix, infix=None, ref=None):
         if isinstance(ref, git.Commit):
             ref = str(ref)

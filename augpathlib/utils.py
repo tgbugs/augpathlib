@@ -105,6 +105,12 @@ def _bind_sysid_(cls):
 
 
 class FileSize(int):
+
+    @classmethod
+    def ofPath(cls, path):
+        """ return size of a path alt FileSize.of(path) ? """
+        return cls(path.stat().st_size)
+
     @property
     def mb(self):
         return self / 1024 ** 2

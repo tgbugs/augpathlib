@@ -13,6 +13,7 @@ from augpathlib.caches import (CachePath,
                                SshCache)
 from augpathlib.remotes import RemotePath
 from augpathlib.utils import StatResult, FileSize, etag
+from augpathlib.zip import ZipHelper, ZipPath
 
 try:
     from augpathlib.repo import RepoHelper, RepoPath
