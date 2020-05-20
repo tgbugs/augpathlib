@@ -518,7 +518,7 @@ class RemotePath:
         # uniform interface for retrieving remote hierarchies decoupled from meta
         yield from self._rchildren()
 
-    def _rchildren(self, create_cache=True):
+    def _rchildren(self, create_cache=True, sparse=False):
         raise NotImplementedError
 
     def children_pull(self, existing):

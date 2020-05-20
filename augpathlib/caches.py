@@ -321,11 +321,9 @@ class CachePath(AugmentedPath):
     def _bootstrap_recursive(self, only=tuple(), skip=tuple(), sparse=False):
         # TODO if rchildren looks like it could be bad
         # go back up to dataset level?
-        if sparse:
-            rcs = self.remote._rchildren(create_cache=False)  # TODO use packages endpoint that can match filenames ?
-        else:
-            sname = lambda gen: sorted(gen, key=lambda c: c.name)
-            rcs = sname(self.remote._rchildren(create_cache=False))  # TODO consider using the match tools
+        #sname = lambda gen: sorted(gen, key=lambda c: c.name)  # c.name doesn't work for remotes
+        #rcs = sname(self.remote._rchildren(create_cache=False, sparse=sparse))
+        rcs = self.remote._rchildren(create_cache=False, sparse=sparse)
 
         local_paths = list(self.local.rchildren)
         local_files = set(p for p in local_paths if p.is_file() or p.is_broken_symlink())
@@ -334,20 +332,10 @@ class CachePath(AugmentedPath):
         # computing local_dirs will remove folders entirely !??
         local_dirs = set(p.relative_to(self.anchor) for p in local_paths if p.is_dir())
         if local_dirs:
-            if sparse:
-                _parents = set()
-                for d in local_dirs:
-                    p = d.parent
-                    if p in local_dirs and p not in _done:
-                        _parents.add(p)
+            rcs = list(rcs)  # sigh
+            remote_dirs = set(c for c in rcs if c.is_dir())
 
-                _local_remotes = set(c for p in _parents for c in p.remote.children)  # TODO Async
-
-                remote_dirs = set(c for c in _local_remotes if c.is_dir())
-            else:
-                remote_dirs = set(c for c in rcs if c.is_dir())
-
-            rd = set(d.as_path() for d in remote_dirs)
+            rd = set(d.as_path() for d in remote_dirs)  # FIXME as_path => lots of network calls
             old_local = local_dirs - rd
             while old_local:
                 thisl = sorted(old_local, key=lambda d: len(d.as_posix()))
@@ -359,16 +347,16 @@ class CachePath(AugmentedPath):
                     new = ad.cache.refresh()
                     #log.info(f'{new}')
                     local_dirs = set(ld for ld in local_dirs
-                                    if not ld.as_posix().startswith(d.as_posix()))
+                                     if not ld.as_posix().startswith(d.as_posix()))
                     old_local = local_dirs - rd
 
         if sparse:
-            if local_dirs:
-                gen = (c for c in _local_remotes if c.is_file() and c._sparse_include())
-            else:
-                gen = (c for c in rcs if c.is_file() and c._sparse_include())
-                # FIXME rcs still takes too long, though using the generator
-                # does get some useful work does first
+            #if local_dirs:
+                #gen = (c for c in _local_remotes if c.is_dir() or (c.is_file() and c._sparse_include()))
+            #else:
+            gen = (c for c in rcs if c.is_dir() or (c.is_file() and c._sparse_include()))
+            # FIXME rcs still takes too long, though using the generator
+            # does get some useful work done first
         else:
             # FIXME horrid performance on remotes with loads of files
             gen = sorted(rcs, key=lambda c: len(c.as_path().as_posix()))
@@ -397,7 +385,7 @@ class CachePath(AugmentedPath):
                         # think the file may have been deleted
                         continue
 
-                cc = child.cache_init(parents=sparse)  # under sparse have to create parents ourselves
+                cc = child.cache_init()
                 log.debug(cc)
 
             yield cc
