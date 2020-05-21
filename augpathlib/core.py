@@ -798,7 +798,7 @@ class LocalPath(EatPath, AugmentedPath):
         else:
             raise FileNotFoundError('missing parent for {self} and parents=False')
 
-    def find_cache_root(self):
+    def find_cache_root(self, fail=False):
         """ find the local root of the cache tree, even if we start with skips """
         found_cache = None
         # try all the variants in case some symlinking weirdness is going on
@@ -810,6 +810,9 @@ class LocalPath(EatPath, AugmentedPath):
                     if parent.cache:
                         found_cache = parent
                 except (exc.NoCachedMetadataError, exc.NotInProjectError) as e:
+                    if fail:
+                        raise e
+
                     # if we had a cache, went to the parent and lost it
                     # then we are at the root, assuming of course that
                     # there aren't sparse caches on the way up (down?) the tree
@@ -829,7 +832,8 @@ class LocalPath(EatPath, AugmentedPath):
             if parent_cache:
                 rel_path = self.relative_to(parent_cache.anchor)
             else:
-                root = self.find_cache_root()  # FIXME is it safe to cache this??
+                # FIXME is it safe to cache the results of finding the root??
+                root = self.find_cache_root(fail=True)
                 rel_path = self.relative_to(root)
             return (rel_path.parts[0] in self._cache_class.cache_ignore or
                     # TODO more conditions
