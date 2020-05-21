@@ -4,11 +4,13 @@ import unittest
 import pytest
 import augpathlib as aug
 from augpathlib import RepoPath, LocalPath, exceptions as exc
-from .common import onerror, skipif_no_net, temp_path
+from .common import onerror, skipif_no_net, temp_path, this_file
 
 
 def test():
-    zp = aug.ZipPath('/home/tom/git/sparc-curation/resources/DatasetTemplate/submission.xlsx')
+    _zp =  this_file.parent / 'test.zip'
+    # TODO create the zip we will test using mkdir, touch, and data = etc.
+    zp = aug.ZipPath(_zp)
 
     zrp = zp.path_relative_zip
     # FIXME the internal paths should
