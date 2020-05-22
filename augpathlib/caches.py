@@ -2,8 +2,9 @@ import pathlib
 import warnings
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
-from augpathlib.core import AugmentedPath, EatHelper
-from augpathlib.utils import log, LOCAL_DATA_DIR, default_cypher
+from augpathlib.core import AugmentedPath, EatPath
+from augpathlib.utils import log, default_cypher
+from augpathlib.utils import LOCAL_DATA_DIR, SPARSE_MARKER
 from augpathlib import remotes
 
 
@@ -23,7 +24,8 @@ class CachePath(AugmentedPath):
     """
 
     _local_data_dir = LOCAL_DATA_DIR
-    cache_ignore = _local_data_dir, '.git',  # TODO
+    _sparse_marker = SPARSE_MARKER
+    cache_ignore = _local_data_dir, _sparse_marker, '.git', # TODO
 
     _local_class = None
     _remote_class_factory = None
@@ -258,6 +260,25 @@ class CachePath(AugmentedPath):
             if hasattr(self, '_meta'):
                 delattr(self, '_meta')
 
+            if hasattr(self, '_sparse_root'):
+                self._mark_sparse()
+                delattr(self, '_sparse_root')
+
+    def _mark_sparse(self):
+        """ default implementation for marking folders as sparse
+
+            this uses a file in the folder, but a better implementation
+            if one has access to xattrs is to use those instead
+
+            as such an implementation of _mark_sparse is also provided
+            on EatPath """
+        mark = self.local / self._sparse_marker
+        mark.touch()
+
+    def _meta_is_root(self, meta):
+        """ used to identify the root during bootstrap """
+        raise NotImplementedError('implement in subclass')
+
     def _bootstrap(self, meta, *,
                    parents=False,
                    fetch_data=False,
@@ -273,7 +294,7 @@ class CachePath(AugmentedPath):
             raise exc.BootstrappingError(f'PathMeta to bootstrap from has no id! {meta}')
 
         if only or skip or sparse:
-            if meta.id.startswith('N:organization:'):  # FIXME :/
+            if self._meta_is_root(meta):
                 # since we only go one organization at a time right now
                 # we never want to skip the top level id
                 log.info(f'Bootstrapping {meta.id} -> {self.local!r}')
@@ -285,7 +306,8 @@ class CachePath(AugmentedPath):
                 return
             else:
                 if sparse and meta.id in sparse:
-                    log.info(f'Sparse strap  {meta.id} -> {self.local!r}')
+                    log.info(f'Sparse strap {meta.id} -> {self.local!r}')
+                    self._sparse_root = True
                     sparse = True
                 else:
                     # if you pass the only mask so do your children
@@ -294,7 +316,8 @@ class CachePath(AugmentedPath):
                 only = tuple()
 
         if self.meta is not None and not recursive:
-            raise exc.BootstrappingError(f'{self} already has meta!\n{self.meta.as_pretty()}')
+            msg = f'{self} already has meta!\n{self.meta.as_pretty()}'
+            raise exc.BootstrappingError(msg)
 
         if self.exists() and self.meta and self.meta.id == meta.id:
             self._meta_updater(meta)
@@ -840,7 +863,7 @@ class ReflectiveCache(CachePath):
 ReflectiveCache._bind_flavours()
 
 
-class EatCache(EatHelper, CachePath):
+class EatCache(EatPath, CachePath):
     xattr_prefix = None
 
     @property
@@ -1050,7 +1073,9 @@ class PrimaryCache(CachePath):
                 self._bootstrapping_id = pathmeta.id
 
             # need to run this to create directories
-            self._bootstrap_prepare_filesystem(parents=False, fetch_data=False, size_limit_mb=0)
+            self._bootstrap_prepare_filesystem(parents=False,
+                                               fetch_data=False,
+                                               size_limit_mb=0)
 
             if self.exists():  # we a directory now
                 super()._meta_setter(pathmeta)

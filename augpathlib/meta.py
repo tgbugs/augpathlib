@@ -1,5 +1,5 @@
 """
-Classes for storing and converting metadata associated with a path or path like object.
+Classes for storing and converting metadata associated with path like objects.
 """
 import pickle
 import struct
@@ -289,7 +289,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         return value
 
     def as_symlink(self, pathmeta):
-        """ encode meta as a relative path to be appended as a child, not a sibbling """
+        """ encode meta as a relative path to be appended as a child,
+            not a sibbling """
 
         __ignoreme = object()
 
@@ -310,7 +311,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         id = self.encode('id', pathmeta.id)
 
-        return pathlib.PurePosixPath(id + f'/.{self.write_version}.' + self.fieldsep.join(gen))
+        path_string = id + f'/.{self.write_version}.' + self.fieldsep.join(gen)
+        return pathlib.PurePosixPath(path_string)
 
     def from_symlink(self, symlink_path):
         """ contextual portion to make sure something weird isn't going on
@@ -361,7 +363,8 @@ class _PathMetaAsXattrs(_PathMetaConverter):
         # as a note: information hiding in python is ... weird ...
         # even when that isn't what you set out to do ...
         @classmethod
-        def from_xattrs(cls, xattrs, prefix=None, path_object=None, _from_xattrs=self.from_xattrs):
+        def from_xattrs(cls, xattrs, prefix=None, path_object=None,
+                        _from_xattrs=self.from_xattrs):
             # FIXME cls(**kwargs) vs calling self.pathmetaclass
             return _from_xattrs(xattrs, prefix=prefix, path_object=path_object)
 
@@ -372,11 +375,6 @@ class _PathMetaAsXattrs(_PathMetaConverter):
     def deprefix(string, prefix):
         if string.startswith(prefix):
             string = string[len(prefix):]
-
-        # deal with normalizing old form here until it is all cleaned up
-        if prefix == 'bf.':
-            if string.endswith('_at'):
-                string = string[:-3]
 
         return string
 
@@ -398,13 +396,15 @@ class _PathMetaAsXattrs(_PathMetaConverter):
 
         if prefix:
             prefix += '.'
+            # NOTE: we do not have to filter xattrs with a different prefix here
+            # they will be captured and removed by PathMeta constructor **kwargs
             kwargs = {k:decode(k, v)
-                    for kraw, v in xattrs.items()
-                    for k in (self.deprefix(kraw.decode(), prefix),)}
+                      for kraw, v in xattrs.items()
+                      for k in (self.deprefix(kraw.decode(), prefix),)}
         else:  # ah manual optimization
             kwargs = {k:decode(k, v)
-                    for kraw, v in xattrs.items()
-                    for k in (kraw.decode(),)}
+                      for kraw, v in xattrs.items()
+                      for k in (kraw.decode(),)}
 
         return self.pathmetaclass(**kwargs)
 
@@ -444,7 +444,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
         raise exc.UnhandledTypeError(f'dont know what to do with {value!r}')
 
     def decode(self, field, value):
-        if field in ('created', 'updated'):  # FIXME human readable vs integer :/
+        if field in ('created', 'updated'):  # FIXME human readable vs integer
             try:
                 # needed for legacy cases
                 value, = struct.unpack('d', value)
@@ -510,8 +510,12 @@ class _PathMetaAsPretty(_PathMetaConverter):
 
     def __init__(self):
         # register functionality on PathMeta
-        def as_pretty(self, pathobject=None, title=None, human=False, _as_pretty=self.as_pretty):
-            return _as_pretty(self, pathobject=pathobject, title=title, human=human)
+        def as_pretty(self, pathobject=None, title=None, human=False,
+                      _as_pretty=self.as_pretty):
+            return _as_pretty(self,
+                              pathobject=pathobject,
+                              title=title,
+                              human=human)
 
         @classmethod
         def from_pretty(cls, pretty, _from_pretty=self.from_pretty):
@@ -583,12 +587,17 @@ class _PathMetaAsPrettyDiff(_PathMetaAsPretty):
 
     def __init__(self):
         # register functionality on PathMeta
-        def as_pretty_diff(self, othermeta, pathobject=None, title=None, human=False,
-                           _as_pretty_diff=self.as_pretty_diff):
-            return _as_pretty_diff(self, othermeta, pathobject=pathobject, title=title, human=human)
+        def as_pretty_diff(self, othermeta, pathobject=None, title=None,
+                           human=False, _as_pretty_diff=self.as_pretty_diff):
+            return _as_pretty_diff(self,
+                                   othermeta,
+                                   pathobject=pathobject,
+                                   title=title,
+                                   human=human)
 
         @classmethod
-        def from_pretty_diff(cls, pretty, _from_pretty_diff=self.from_pretty_diff):
+        def from_pretty_diff(cls, pretty,
+                             _from_pretty_diff=self.from_pretty_diff):
             # FIXME cls(**kwargs) vs calling self.pathmetaclass
             return _from_pretty_diff(pretty)
 
@@ -597,7 +606,8 @@ class _PathMetaAsPrettyDiff(_PathMetaAsPretty):
 
         self.maxf = max([len(f) for f in self.fields])
 
-    def as_pretty_diff(self, pathmeta, othermeta, pathobject=None, title=None, human=False):
+    def as_pretty_diff(self, pathmeta, othermeta, pathobject=None, title=None,
+                       human=False):
         if title is None:
             if pathobject is not None:
                 title = pathobject.relative_to(pathobject.cwd()).as_posix()
@@ -610,11 +620,15 @@ class _PathMetaAsPrettyDiff(_PathMetaAsPretty):
         def merge(a, b):
             keys = [k for k, _ in a]
             okeys = [ok for ok, _ in b]
-            kind = [(k, okeys.index(k) - i, k) if k in okeys else (None, 0, k)
-                    for i, k in enumerate(keys)]
-            okind = [(ok, keys.index(ok) - i, ok) if ok in keys else (None, 0, ok)
-                     for i, ok in enumerate(okeys)]
-            long, short = (kind, okind) if len(kind) > len(okind) else (okind, kind)
+            kind = [(k, okeys.index(k) - i, k)
+                    if k in okeys else
+                    (None, 0, k) for i, k in enumerate(keys)]
+            okind = [(ok, keys.index(ok) - i, ok)
+                     if ok in keys else
+                     (None, 0, ok) for i, ok in enumerate(okeys)]
+            long, short = ((kind, okind)
+                           if len(kind) > len(okind) else
+                           (okind, kind))
             start_align = None
             aligned = []
             offset = 0
@@ -647,7 +661,8 @@ class _PathMetaAsPrettyDiff(_PathMetaAsPretty):
                 yield l + r
 
         h = [['Key', 'Value', 'Key Other', 'Value Other']]
-        rows = h + list(merge(self.rows(pathmeta, human=human), self.rows(othermeta, human=human)))
+        rows = h + list(merge(self.rows(pathmeta, human=human),
+                              self.rows(othermeta, human=human)))
         try:
             table = AsciiTable(rows, title=title).table
         except TypeError as e:
@@ -674,7 +689,8 @@ class _EncodeByField:
         if not isinstance(value, datetime):
             raise TypeError(f'{type(value)} is not a datetime for {value}')
 
-        has_tz = value.tzinfo is not None and value.tzinfo.utcoffset(None) is not None
+        has_tz = (value.tzinfo is not None and
+                  value.tzinfo.utcoffset(None) is not None)
         value = isoformat(value)
         if not has_tz:
             log.warning('why do you have a timestamp without a timezone ;_;')
@@ -729,4 +745,3 @@ _PathMetaAsSymlink()
 _PathMetaAsXattrs()
 _PathMetaAsPretty()
 _PathMetaAsPrettyDiff()  # TODO
-

@@ -24,6 +24,8 @@ def makeSimpleLogger(name, level=logging.INFO):
 log = makeSimpleLogger('augpathlib')
 
 LOCAL_DATA_DIR = '.operations'
+SPARSE_MARKER = '.sparse'
+AUG_XATTR_PREFIX = 'augpathlib'
 default_cypher = hashlib.blake2b
 cypher_command_lookup = {hashlib.sha256:'sha256sum',
                          hashlib.blake2b:'b2sum'}

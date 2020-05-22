@@ -64,6 +64,24 @@ class TestEat(unittest.TestCase):
         test = self.file.xattrs()
         assert test
 
+    def test_sparse(self):
+        test_file = self.dir / 'more-test'
+        test_file.touch()
+
+        assert not self.file.is_sparse()
+        assert not self.dir.is_sparse()
+        assert not test_file.is_sparse()
+
+        self.dir._mark_sparse()
+        assert not self.file.is_sparse()
+        assert self.dir.is_sparse()
+        assert test_file.is_sparse()
+
+        self.dir._clear_sparse()
+        assert not self.file.is_sparse()
+        assert not self.dir.is_sparse()
+        assert not test_file.is_sparse()
+
 
 class TestEatXopen(TestEat):
     _test_class = EatXopenPath

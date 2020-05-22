@@ -22,7 +22,7 @@ import augpathlib as aug
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.utils import log, default_cypher, StatResult, etag
-from augpathlib.utils import _bind_sysid_
+from augpathlib.utils import _bind_sysid_, AUG_XATTR_PREFIX
 
 _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
 _IGNORED_WINERRORS = (
@@ -123,7 +123,7 @@ class ADSHelper(EatHelper):
             # single letter file names with no extension
             # masquerade as drive letters on windows and
             # there seems to be nothing we can do about it
-            raise ValueError('windows a single letter file names dont get a long')
+            raise ValueError('windows and single letter file names dont get along')
 
         return AugmentedPath(*start, last + ':' + name)
 
@@ -172,6 +172,15 @@ class ADSHelper(EatHelper):
         finally:
             pyads.kernel32.FindClose(p)  # Close the handle
 
+    def delxattr(self, key, fail=False, namespace=XATTR_DEFAULT_NS):
+        name = self._key_convention(key, namespace)
+        stream = self._stream(name)
+        try:
+            stream.unlink()
+        except FileNotFoundError as e:
+            if fail:
+                raise exc.NoStreamError((self, key)) from e
+
     def setxattr(self, key, value, namespace=XATTR_DEFAULT_NS):
         if not isinstance(value, bytes):  # checksums
             raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
@@ -196,8 +205,12 @@ class ADSHelper(EatHelper):
     def getxattr(self, key, namespace=XATTR_DEFAULT_NS):
         # we don't deal with types here, we just act as a dumb store
         name = self._key_convention(key, namespace)
-        with open(self._stream(name), 'rb') as f:
-            return f.read()
+        try:
+            with open(self._stream(name), 'rb') as f:
+                return f.read()
+
+        except FileNotFoundError as e:
+            raise exc.NoStreamError((self, key)) from e
 
     def _xattrs(self):
         out = {}
@@ -224,9 +237,17 @@ class ADSHelper(EatHelper):
 class XattrHelper(EatHelper):
     """ pathlib helper augmented with xattr support """
 
+    def delxattr(self, key, fail=False, namespace=XATTR_DEFAULT_NS):
+        try:
+            xattr.remove(self.as_posix(), key, namespace=namespace)
+        except OSError as e:
+            if fail or e.errno != 61:  # 61 -> No data available
+                raise e
+
     def setxattr(self, key, value, namespace=XATTR_DEFAULT_NS):
         if not isinstance(value, bytes):  # checksums
-            raise TypeError(f'setxattr only accepts values already encoded to bytes!\n{value!r}')
+            raise TypeError('setxattr only accepts values already '
+                            f'encoded to bytes!\n{value!r}')
         else:
             bytes_value = value
 
@@ -238,7 +259,13 @@ class XattrHelper(EatHelper):
 
     def getxattr(self, key, namespace=XATTR_DEFAULT_NS):
         # we don't deal with types here, we just act as a dumb store
-        return xattr.get(self.as_posix(), key, namespace=namespace)
+        try:
+            return xattr.get(self.as_posix(), key, namespace=namespace)
+        except OSError as e:
+            if e.errno == 61:
+                raise exc.NoStreamError((self, key)) from e
+            else:
+                raise e
 
     def xattrs(self, namespace=XATTR_DEFAULT_NS):
         # decode keys later
@@ -654,7 +681,25 @@ AugmentedPath._bind_flavours()
 
 
 class EatPath(EatHelper, AugmentedPath):
-    pass
+
+    _sparse_key = (AUG_XATTR_PREFIX + '.sparse').encode()
+
+    def _sparse_root(self):
+        parent = self.parent
+        if self != parent:
+            try:
+                return self.getxattr(self._sparse_key) == b'1'
+            except exc.NoStreamError:
+                return parent._sparse_root()
+
+    def is_sparse(self):
+        return self._sparse_root() is not None
+
+    def _clear_sparse(self):
+        self.delxattr(self._sparse_key)
+
+    def _mark_sparse(self):
+        self.setxattr(self._sparse_key, b'1')
 
 
 EatPath._bind_flavours()
