@@ -32,7 +32,7 @@ class TestEat(unittest.TestCase):
         self.dir.mkdir()
 
         self.file = self._test_class(sandbox, 'some-file')
-        if self.file.exists() :
+        if self.file.exists():
             self.file.unlink()
         self.file.touch()
 

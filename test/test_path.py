@@ -180,6 +180,54 @@ class TestACachePath(unittest.TestCase):
         assert test_path.cache.meta
 
 
+class TestCacheSparse(unittest.TestCase):
+    _test_class = CachePathTest
+    sandbox = test_base / 'sparse-sandbox'
+    @classmethod
+    def setUpClass(cls):
+        cls.sandbox.mkdir(parents=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.sandbox.rmtree(onerror=onerror)
+
+    def setUp(self):
+        self.dir = self._test_class(self.sandbox, 'some-dir', meta=PathMeta(id='0'))
+        if self.dir.exists():
+            self.dir.rmtree(onerror=onerror)
+        elif self.dir.is_symlink():
+            self.dir.unlink()
+        self.dir.mkdir()
+
+        self.file = self._test_class(self.sandbox, 'some-file', meta=PathMeta(id='1'))
+        if self.file.exists() or self.file.is_symlink():
+            self.file.unlink()
+        self.file.touch()
+
+    def tearDown(self):
+        self.dir.rmtree(onerror=onerror)
+        self.file.unlink()
+
+    def test_sparse(self):
+        test_file = self._test_class(self.dir, 'more-test', meta=PathMeta(id='3'))
+        test_file.unlink()  # FIXME fix bad Cache constructor behavior already
+        test_file.touch()
+
+        assert not self.file.is_sparse()
+        assert not self.dir.is_sparse()
+        assert not test_file.is_sparse()
+
+        self.dir._mark_sparse()
+        assert not self.file.is_sparse()
+        assert self.dir.is_sparse()
+        assert test_file.is_sparse()
+
+        self.dir._clear_sparse()
+        assert not self.file.is_sparse()
+        assert not self.dir.is_sparse()
+        assert not test_file.is_sparse()
+
+
 class TestPathMeta(unittest.TestCase):
     prefix = None
 

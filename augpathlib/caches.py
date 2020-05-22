@@ -264,6 +264,16 @@ class CachePath(AugmentedPath):
                 self._mark_sparse()
                 delattr(self, '_sparse_root')
 
+    def _sparse_root(self):  # TODO consider SparseHelper
+        return self != self.parent and (self / self._sparse_marker).exists()
+
+    def is_sparse(self):
+        return self._sparse_root() is not None
+
+    def _clear_sparse(self):
+        mark = self.local / self._sparse_marker
+        mark.unlink()
+
     def _mark_sparse(self):
         """ default implementation for marking folders as sparse
 

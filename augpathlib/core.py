@@ -460,7 +460,7 @@ class AugmentedPath(pathlib.Path):
                 raise exc.WillNotRemovePathError(f'Will not remove top level paths. {self}')
             elif lenparts <= 3 and 'home' in self.parts:
                 raise exc.WillNotRemovePathError(f'Will not remove home directories. {self}')
-            elif self == self.cwd():
+            elif self == pathlib.Path.cwd():
                 raise exc.WillNotRemovePathError(f'Will not remove current working directory. {self}')
 
         try:
