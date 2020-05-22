@@ -260,9 +260,9 @@ class CachePath(AugmentedPath):
             if hasattr(self, '_meta'):
                 delattr(self, '_meta')
 
-            if hasattr(self, '_sparse_root'):
+            if hasattr(self, '_is_sparse_root'):
                 self._mark_sparse()
-                delattr(self, '_sparse_root')
+                delattr(self, '_is_sparse_root')
 
     def _sparse_root(self):  # TODO consider SparseHelper
         return self != self.parent and (self / self._sparse_marker).exists()
@@ -317,7 +317,7 @@ class CachePath(AugmentedPath):
             else:
                 if sparse and meta.id in sparse:
                     log.info(f'Sparse strap {meta.id} -> {self.local!r}')
-                    self._sparse_root = True
+                    self._is_sparse_root = True
                     sparse = True
                 else:
                     # if you pass the only mask so do your children
