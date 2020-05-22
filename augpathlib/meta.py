@@ -375,8 +375,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
     def deprefix(string, prefix):
         if string.startswith(prefix):
             string = string[len(prefix):]
-
-        return string
+            return string
 
     def from_xattrs(self, xattrs, prefix=None, path_object=None):
         """ decoding from bytes """
@@ -396,11 +395,14 @@ class _PathMetaAsXattrs(_PathMetaConverter):
 
         if prefix:
             prefix += '.'
-            # NOTE: we do not have to filter xattrs with a different prefix here
-            # they will be captured and removed by PathMeta constructor **kwargs
             kwargs = {k:decode(k, v)
                       for kraw, v in xattrs.items()
-                      for k in (self.deprefix(kraw.decode(), prefix),)}
+                      for k in (self.deprefix(kraw.decode(), prefix),)
+                      # yes, we do have to filter out things that do
+                      # not match the prefix because an unprefixed key
+                      # of the same name would collide, also things with
+                      # alt prefixes cause lots of warnings during init
+                      if k is not None}
         else:  # ah manual optimization
             kwargs = {k:decode(k, v)
                       for kraw, v in xattrs.items()
