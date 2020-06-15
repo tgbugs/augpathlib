@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import pathlib
+import tempfile
 import warnings
 import mimetypes
 import subprocess
@@ -448,8 +449,92 @@ class AugmentedPath(pathlib.Path):
     def rename(self, target):
         os.rename(self, target)
 
+    def swap_carefree(self, target):
+        """ swap two paths, use atomic if available on the system
+            and if the paths are on the same device otherwise fail
+
+            side note: there doesn't seem to be a standard name for
+            the superset of atomic and non-atomic, this operations
+            is definitely not non-atomic, it is maybe-atomic, but
+            maybe-atomic is too optimistic, thus carefree seems
+            appropriately ... disinterested in the exact semantics """
+        try:
+            self.swap(target)
+        except Exception as e:  # TODO clearer error handling
+            fd, temp_str = tempfile.mkstemp(dir=target.parent)
+            temp = pathlib.Path(temp_str)
+            temp.unlink()  # FIXME so dumb
+            # rename target -> temp
+            # rename self -> target
+            # rename target -> self
+            target.rename(temp)
+            self.rename(target)
+            temp.rename(self)
+
+    if sys.platform != 'linux': # just look at us not using pathlib's infra ...
+        def _swap(self, target):
+            raise NotImplementedError('Windows has not atomic swap operation!')
+
+    else:
+        # linux renameat2
+        # osx renamex_np
+        # osx exchangedata
+        # win MoveFileTransacted very few systems support this
+        import ctypes as _ctypes
+        _SYS_renameat2 = 316  # from /usr/include/asm/unistd_64.h
+        _RENAME_EXCHANGE = (1 << 1)  # /usr/src/linux/include/uapi/linux/fs.h
+        _libc = _ctypes.CDLL(None)
+        _rnat2_syscall = _libc.syscall
+        _rnat2_syscall.restypes = _ctypes.c_int  # returns and int
+        _rnat2_syscall.argtypes = (_ctypes.c_int,  # syscall number
+                                   _ctypes.c_int,  # old dir fd
+                                   _ctypes.POINTER(_ctypes.c_char),  # oldpat
+                                   _ctypes.c_int, # new dir fd
+                                   _ctypes.POINTER(_ctypes.c_char),  # newpath
+                                   _ctypes.c_uint)  # flags
+
+        def _swap(self, target):
+            raise NotImplementedError('nearly ready')
+            old_fd = os.open(self, 0)
+            new_fd = os.open(target, 0)
+            old_path = None  # TODO FIXME
+            new_path = None  # TODO FIXME
+            self._rnat2_syscall(self._SYS_renameat2,
+                                old_fd, old_path,
+                                new_fd, new_path,
+                                self._RENAME_EXCHANGE)
+            os.close(old_fd)
+            os.close(new_fd)
+
+    def swap(self, target):
+        """ atomic swap of two paths
+
+            this will raise and error in the following cases
+            1. if the system has no atomic swap function such as renameat2
+            2. if the paths to be swapped are on different devices
+            3. if either path does not exist
+        """
+        se = self.exists()
+        te = target.exists()
+        if not se:
+            msg = f'Both self and target must exist self does not! {self}'
+            raise FileNotFoundError(msg)
+        elif not te:
+            msg = f'Both self and target must exist target does not! {target}'
+            raise FileNotFoundError(msg)
+
+        sd = self.stat().st_dev
+        td = target.stat().st_dev
+        if sd != td:
+            msg = f'Self and target must be on the same device! {sd} != {td}'
+            raise ValueError(msg) # FIXME find or make the correct error type
+
+        self._swap(target)
+
     def rmtree(self, ignore_errors=False, onerror=None, DANGERZONE=False):
         """ DANGER ZONE """
+        # FIXME make this atomic by renaming to a random name
+        # that doesn't exist and then calling rmtree on that
         if not self.is_absolute():
             raise exc.WillNotRemovePathError(f'Only absolute paths can be removed recursively. {self}')
 

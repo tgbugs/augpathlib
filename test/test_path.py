@@ -144,6 +144,25 @@ class TestAugPathCopy(Helper, unittest.TestCase):
             pass
 
 
+class TestAugPathSwap(Helper, unittest.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.test_path.mkdir()
+        self.source_d = self.test_path / 'source-dir'
+        self.target_d = self.test_path / 'target-dir'
+        self.source_d.mkdir()
+        self.target_d.mkdir()
+
+        self.f1 = self.source_d / 'f1'
+        self.f2 = self.target_d / 'f2'
+        self.f1.touch()
+        self.f2.touch()
+
+    def test_swap_carefree(self):
+        self.source_d.swap_carefree(self.target_d)
+
+
 class TestACachePath(unittest.TestCase):
     def setUp(self):
         if test_path.is_symlink():
