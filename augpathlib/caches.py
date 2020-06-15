@@ -216,9 +216,19 @@ class CachePath(AugmentedPath):
                 raise exc.AugPathlibError('aaaaaaaaaaaaaaaaaaaaaa') from e
 
             return child
+
+        elif isinstance(key, str):
+            child = self.local / key
+            if child.exists() or child.is_broken_symlink():
+                return child.cache
+            else:
+                raise FileNotFoundError('There is no local cached file with that name. Cannot construct cache.')
+
         else:
-            raise TypeError('Cannot construct a new CacheClass from an object '
-                            f'without an id and a name! {key}')
+            pass  # error incoming
+
+        raise TypeError('Cannot construct a new CacheClass from an object '
+                        f'without an id and a name! {key}')
 
     def __rtruediv__(self, cache):
         """ key is a subclass of self.__class__ """
