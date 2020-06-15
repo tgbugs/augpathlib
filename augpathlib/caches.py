@@ -148,15 +148,21 @@ class CachePath(AugmentedPath):
         raise NotImplementedError('implement in subclasses')
         # FIXME mkdir and put it in a more conventional location
 
+    @property
+    def _trashed_path(self):
+        return self.trash / f'{self.parent.id}-{self.id}-{self.name}'
+
+    @property
+    def _trashed_path_short(self):
+        return self.trash / self.name  # FIXME SIGH
+
     def crumple(self):  # FIXME change name to something more obvious ...
-        trashed = self.trash / f'{self.parent.id}-{self.id}-{self.name}'
         try:
-            self.rename(trashed)
+            self.rename(self._trashed_path)
         except OSError as e:
             if e.errno == 36:  # File name too long  # SIGH
-                trashed = self.trash / self.name  # FIXME SIGH
-                log.critical(f'Long name {self.name}')
-                self.rename(trashed)
+                log.critical(f'Had to rename trash {self._trashed_path} -> {self._trashed_path_short}')
+                self.rename(self._trashed_path_short)
             else:
                 raise e
 
