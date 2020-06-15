@@ -1,9 +1,12 @@
+import sys
 import unittest
 from pathlib import PurePosixPath
 import pytest
+from augpathlib import swap
 from augpathlib import exceptions as exc
 from augpathlib import AugmentedPath, LocalPath
 from augpathlib import SymlinkCache, PrimaryCache
+from augpathlib import PathMeta
 from augpathlib import PathMeta
 from augpathlib.meta import _PathMetaAsSymlink, _PathMetaAsXattrs
 from .common import (log,
@@ -19,10 +22,17 @@ from .common import (log,
 SymlinkCache._local_class = AugmentedPath  # have to set a default
 
 class Helper:
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         if not test_base.exists():
             test_base.mkdir()
 
+    @classmethod
+    def tearDownClass(cls):
+        if test_base.exists():
+            test_base.rmtree(onerror=onerror)
+
+    def setUp(self):
         self.test_link = AugmentedPath(test_base, 'evil-symlink')  # FIXME random needed ...
         if self.test_link.is_symlink():
             self.test_link.unlink()
@@ -159,8 +169,27 @@ class TestAugPathSwap(Helper, unittest.TestCase):
         self.f1.touch()
         self.f2.touch()
 
+    def _doit(self, thunk):
+        assert (self.source_d / self.f1.name).exists()
+        assert (self.target_d / self.f2.name).exists()
+        assert self.f1.exists()
+        assert self.f2.exists()
+        thunk()
+        assert (self.source_d / self.f2.name).exists()
+        assert (self.target_d / self.f1.name).exists()
+        assert not self.f1.exists()
+        assert not self.f2.exists()
+
+    @pytest.mark.skipif(sys.platform != 'linux', reason='not implemented')
+    def test_swap_linux(self):
+        self._doit(lambda :swap.swap_linux(self.source_d, self.target_d))
+
+    @pytest.mark.skipif(sys.platform != 'linux', reason='not implemented')
+    def test_swap(self):
+        self._doit(lambda :self.source_d.swap(self.target_d))
+
     def test_swap_carefree(self):
-        self.source_d.swap_carefree(self.target_d)
+        self._doit(lambda :self.source_d.swap_carefree(self.target_d))
 
 
 class TestACachePath(unittest.TestCase):

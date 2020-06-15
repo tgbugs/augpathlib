@@ -20,6 +20,7 @@ except (ImportError, TypeError) as e:
 #from Xlib.display import Display
 #from Xlib import Xatom
 import augpathlib as aug
+from augpathlib import swap
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.utils import log, default_cypher, StatResult, etag
@@ -472,39 +473,9 @@ class AugmentedPath(pathlib.Path):
             temp.rename(self)
 
     if sys.platform != 'linux': # just look at us not using pathlib's infra ...
-        def _swap(self, target):
-            raise NotImplementedError('Windows has not atomic swap operation!')
-
+        _swap = swap.swap_not_implemented
     else:
-        # linux renameat2
-        # osx renamex_np
-        # osx exchangedata
-        # win MoveFileTransacted very few systems support this
-        import ctypes as _ctypes
-        _SYS_renameat2 = 316  # from /usr/include/asm/unistd_64.h
-        _RENAME_EXCHANGE = (1 << 1)  # /usr/src/linux/include/uapi/linux/fs.h
-        _libc = _ctypes.CDLL(None)
-        _rnat2_syscall = _libc.syscall
-        _rnat2_syscall.restypes = _ctypes.c_int  # returns and int
-        _rnat2_syscall.argtypes = (_ctypes.c_int,  # syscall number
-                                   _ctypes.c_int,  # old dir fd
-                                   _ctypes.POINTER(_ctypes.c_char),  # oldpat
-                                   _ctypes.c_int, # new dir fd
-                                   _ctypes.POINTER(_ctypes.c_char),  # newpath
-                                   _ctypes.c_uint)  # flags
-
-        def _swap(self, target):
-            raise NotImplementedError('nearly ready')
-            old_fd = os.open(self, 0)
-            new_fd = os.open(target, 0)
-            old_path = None  # TODO FIXME
-            new_path = None  # TODO FIXME
-            self._rnat2_syscall(self._SYS_renameat2,
-                                old_fd, old_path,
-                                new_fd, new_path,
-                                self._RENAME_EXCHANGE)
-            os.close(old_fd)
-            os.close(new_fd)
+        _swap = swap.swap_linux
 
     def swap(self, target):
         """ atomic swap of two paths
