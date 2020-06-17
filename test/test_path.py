@@ -378,7 +378,7 @@ class TestContext(unittest.TestCase):
 
     def test_context(self):
         start = AugmentedPath.cwd()
-        target = AugmentedPath(temp_path)
+        target = AugmentedPath(temp_path).resolve()  # resolve needed for osx
         distractor = AugmentedPath('~/').expanduser()
         assert temp_path.is_dir()
         with target:

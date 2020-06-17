@@ -1,5 +1,6 @@
 import os
 import sys
+import errno
 import shutil
 import pathlib
 import tempfile
@@ -30,6 +31,8 @@ _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
 _IGNORED_WINERRORS = (
     123,  # 'The filename, directory name, or volume label syntax is incorrect' -> 22 EINVAL
 )
+if sys.platform == 'darwin':
+    _IGNORED_ERROS += (errno.ENAMETOOLONG,)
 
 
 if os.name != 'nt':
@@ -49,6 +52,11 @@ else:
 
 if sys.version_info >= (3, 7):
     pathlib._IGNORED_ERROS += (ELOOP,)
+    if sys.platform == 'darwin':
+        # darwin gets very confused by self referential symlinks
+        # and it seems that they stack up on eachother while being
+        # dereferenced until the link name becomes too long
+        pathlib._IGNORED_ERROS += (errno.ENAMETOOLONG,)
 
 else:
 
@@ -264,7 +272,7 @@ class XattrHelper(EatHelper):
         try:
             return xattr.get(self.as_posix(), key, namespace=namespace)
         except OSError as e:
-            if e.errno == 61:
+            if e.errno == errno.ENODATA or e.errno == errno.ENOATTR:
                 raise exc.NoStreamError((self, key)) from e
             else:
                 raise e
