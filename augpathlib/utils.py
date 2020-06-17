@@ -145,6 +145,10 @@ class StatResult:
 
     #stat_format = f'\"\'%n\' %o %s \'%w\' %W \'%x\' %X \'%y\' %Y \'%z\' %Z %g %u %f\"'
 
+    _stat_format_darwin = '\"%N  %i  %k  %z  %SB  %B  %Sa  %a  %Sm  %m  %Sc  %c  %g  %u  %Xp\"'
+    # also need -t '%F %T %z' for the %SB and friends, unfortunately it seems nanoseconds is missing?
+    # so probably better to check for gstat first  # also -f instead of -c
+
     def __init__(self, out):
         out = out.decode()
         #name, rest = out.rsplit("'", 1)

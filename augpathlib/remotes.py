@@ -794,12 +794,21 @@ class SshRemote(RemotePath, pathlib.PurePath):
         log.debug(hex_)
         return bytes.fromhex(hex_)
 
-    @property
-    def _stat_cmd(self):
-        return 'gstat' if self.remote_platform == 'darwin' else 'stat'
+    def _stat_cmd(self, stat_format=StatResult.stat_format, path=None):
+        # TODO use _stat_format_darwin for cases where gstat is missing
+        cmd = 'gstat' if self.remote_platform == 'darwin' else 'stat'
+        if path is None:
+            path = self.rpath
+
+        if path == '':
+            _path = path
+        else:
+            _path = f' "{path}"'
+
+        return f'{cmd} -c {stat_format}{_path}'
 
     def stat(self):
-        remote_cmd = f'stat "{self.rpath}" -c {StatResult.stat_format}'
+        remote_cmd = self._stat_cmd()
         out = self._ssh(remote_cmd)
         try:
             return StatResult(out)
@@ -811,6 +820,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
                 raise FileNotFoundError(out.decode())
 
             else:
+                log.error(remote_cmd)
                 raise ValueError(out) from e
 
     def exists(self):
@@ -843,12 +853,12 @@ class SshRemote(RemotePath, pathlib.PurePath):
         return self.__class__(self.cache.parent)  # FIXME not right ...
 
     def is_dir(self):
-        remote_cmd = f'{self._stat_cmd} -c %F {self.rpath}'
+        remote_cmd = self._stat_cmd(stat_format="%F")
         out = self._ssh(remote_cmd)
         return out == b'directory'
 
     def is_file(self):
-        remote_cmd = f'{self._stat_cmd} -c %F {self.rpath}'
+        remote_cmd = self._stat_cmd(stat_format="%F")
         out = self._ssh(remote_cmd)
         return out == b'regular file'
 
@@ -862,7 +872,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
         if self.is_dir():
             # no children if it is a file sadly
             remote_cmd = (f"cd {self.rpath};"
-                          f"{self._stat_cmd} -c {StatResult.stat_format} {{.,}}*;"
+                          f"{self._stat_cmd(path='')} {{.,}}*;"
                           "echo '----';"
                           f"{self.cypher_command} {{.,}}*;"  # FIXME fails on directories destroying alignment
                           'cd "${OLDPWD}"')
