@@ -27,6 +27,8 @@ from augpathlib.meta import PathMeta
 from augpathlib.utils import log, default_cypher, StatResult, etag
 from augpathlib.utils import _bind_sysid_, AUG_XATTR_PREFIX
 
+SPARSE_KEY = (AUG_XATTR_PREFIX + '.sparse')
+
 _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
 _IGNORED_WINERRORS = (
     123,  # 'The filename, directory name, or volume label syntax is incorrect' -> 22 EINVAL
@@ -122,6 +124,8 @@ class ADSHelper(EatHelper):
     """ Windows NTFS equivalent of Xattrs is Alternate Data Streams
         This class allows ADS to pretend to work like xattrs.
     """
+
+    _sparse_key = SPARSE_KEY
 
     @staticmethod
     def _key_convention(key, namespace):
@@ -246,6 +250,8 @@ class ADSHelper(EatHelper):
 
 class XattrHelper(EatHelper):
     """ pathlib helper augmented with xattr support """
+
+    _sparse_key = SPARSE_KEY.encode()
 
     def delxattr(self, key, fail=False, namespace=XATTR_DEFAULT_NS):
         try:
@@ -469,16 +475,17 @@ class AugmentedPath(pathlib.Path):
             appropriately ... disinterested in the exact semantics """
         try:
             self.swap(target)
-        except Exception as e:  # TODO clearer error handling
-            fd, temp_str = tempfile.mkstemp(dir=target.parent)
-            temp = pathlib.Path(temp_str)
-            temp.unlink()  # FIXME so dumb
+        except (Exception, NotImplementedError) as e:  # TODO clearer error handling
+            temp_str = tempfile.mkdtemp(dir=target.parent)
+            temp_dir = pathlib.Path(temp_str)
+            temp = temp_dir / target.name
             # rename target -> temp
             # rename self -> target
             # rename target -> self
             target.rename(temp)
             self.rename(target)
             temp.rename(self)
+            temp_dir.rmdir()
 
     if sys.platform != 'linux': # just look at us not using pathlib's infra ...
         _swap = swap.swap_not_implemented
@@ -746,7 +753,7 @@ AugmentedPath._bind_flavours()
 
 class EatPath(EatHelper, AugmentedPath):
 
-    _sparse_key = (AUG_XATTR_PREFIX + '.sparse').encode()
+    # NOTE _sparse_key is set on each helper
 
     def _sparse_root(self):
         parent = self.parent
