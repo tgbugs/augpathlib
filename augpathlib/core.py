@@ -1275,9 +1275,12 @@ class XopenHelper:
 class XopenWindowsHelper(XopenHelper):
     _command = 'start'
 
-    def xopen(self):
-        """ open file using start """
-        process = subprocess.Popen([self._command, self],
+    def xopen(self, command=None):
+        """ open file using start or `command' if provided """
+        if command is None or not isinstance(command, str):
+            command = self._command
+
+        process = subprocess.Popen([command, self],
                                    stdout=subprocess.DEVNULL,
                                    stderr=subprocess.STDOUT)
 
@@ -1285,9 +1288,12 @@ class XopenWindowsHelper(XopenHelper):
 class XopenPosixHelper(XopenHelper):
     _command = 'open' if sys.platform == 'darwin' else 'xdg-open'
 
-    def xopen(self):
-        """ open file using xdg-open """
-        process = subprocess.Popen([self._command, self.as_posix()],
+    def xopen(self, command=None):
+        """ open file using xdg-open or `command' if provided """
+        if command is None or not isinstance(command, str):
+            command = self._command
+
+        process = subprocess.Popen([command, self.as_posix()],
                                    stdout=subprocess.DEVNULL,
                                    stderr=subprocess.STDOUT)
 
