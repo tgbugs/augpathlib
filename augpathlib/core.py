@@ -1176,7 +1176,12 @@ class LocalPath(EatPath, AugmentedPath):
     @property
     def children(self):
         if self.is_dir():
-            if self.cache is not None and self == self.cache.anchor.local:
+            if (self.cache is not None and
+                # relative paths inside may have a cache but no anchor
+                # the anchor itself can be relative and have an anchor
+                # so we test to see if there is an anchor first
+                self.cache.anchor and
+                self == self.cache.anchor.local):
                 cache_ignore = self._cache_class.cache_ignore
                 # implemented this way we can still use Path to navigate
                 # once we are inside local data dir, though all files there
@@ -1191,7 +1196,12 @@ class LocalPath(EatPath, AugmentedPath):
 
     @property
     def rchildren(self):
-        if self.is_dir() and self.cache is not None and self == self.cache.anchor.local:
+        if (self.is_dir() and self.cache is not None and
+            # relative paths inside may have a cache but no anchor
+            # the anchor itself can be relative and have an anchor
+            # so we test to see if there is an anchor first
+            self.cache.anchor and
+            self == self.cache.anchor.local):
             for path in self.children:
                 yield path
                 yield from path.rchildren
