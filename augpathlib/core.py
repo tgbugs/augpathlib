@@ -601,12 +601,18 @@ class AugmentedPath(pathlib.Path):
 
     @property
     def mimetype(self):
+        if not self.is_absolute():  # needed for safe as_uri
+            self = self.resolve()
+
         mime, encoding = mimetypes.guess_type(self.as_uri())
         if mime:
             return mime
 
     @property
     def encoding(self):
+        if not self.is_absolute():  # needed for safe as_uri
+            self = self.resolve()
+
         mime, encoding = mimetypes.guess_type(self.as_uri())
         if encoding:
             return encoding
