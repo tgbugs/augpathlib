@@ -28,7 +28,7 @@ try:
 except ImportError:
     magic_dep = "python-magic; os_name != 'nt'"
 
-tests_require = ['pytest', 'pytest-runner']
+tests_require = ['pytest']
 setup(
     name='augpathlib',
     version=__version__,
