@@ -59,7 +59,7 @@ setup(
         'pexpect>=4.7.0',
         #'psutil',
         'python-dateutil',
-        "pyxattr; os_name != 'nt'",
+        # "pyxattr; os_name != 'nt'",
         'terminaltables',
         #'Xlib',
     ],
