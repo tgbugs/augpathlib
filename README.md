@@ -33,3 +33,22 @@ represented in the layer above this one (currently DatasetData, in the future a 
 That said, it does seem like we need a more formal place that can map between all these
 things rather than always trying to derive the mappings from data embedded (bound) to
 the derefereced path object. 
+
+## Installing on MacOS catalina 10.15.5+
+If you are getting a failed build for pxattr, please continue reading the following.
+When using LLVM (9.0.1+) or another 3rd party library for Clang on MacOS, there was an issue that requires a possible reinstall if you getting a failed build for pxattr. See [LLVM Issue](https://github.com/iustin/pyxattr/issues/25) for details. To reinstall LLVM on brew or anaconda you can use the following examples.
+```bash
+> brew reinstall llvm 
+```
+or 
+```bash
+> conda install --force-reinstall llvm 
+```
+If the reinstall fails to clear the issue consider uninstalling that library and use the default Clang from Xcode. It should be the following version or higher.
+```bash
+> clang -v
+Apple clang version 11.0.3 (clang-1103.0.32.62)
+Target: x86_64-apple-darwin19.5.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+```
