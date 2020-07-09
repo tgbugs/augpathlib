@@ -14,8 +14,9 @@ from functools import wraps
 from itertools import chain
 try:
     import magic  # from sys-apps/file consider python-magic ?
-except (ImportError, TypeError) as e:
-    pass
+    _have_magic = True
+except (AttributeError, ImportError, TypeError) as e:
+    _have_magic = False
 
 #import psutil  # import for experimental xopen functionality
 #from Xlib.display import Display
@@ -621,12 +622,20 @@ class AugmentedPath(pathlib.Path):
     def _magic_mimetype(self):
         """ This can be slow because it has to open the files. """
         if self.exists():
-            if hasattr(magic, 'detect_from_filename'):
-                # sys-apps/file python-magic api
-                return magic.detect_from_filename(self).mime_type
-            else:
-                # python-magic
-                return magic.from_file(self.as_posix(), mime=True)
+            try:
+                if hasattr(magic, 'detect_from_filename'):
+                    # sys-apps/file python-magic api
+                    return magic.detect_from_filename(self).mime_type
+                else:
+                    # python-magic
+                    return magic.from_file(self.as_posix(), mime=True)
+            except NameError as e:
+                if not _have_magic:
+                    msg = ('no module magic found from either python-magic '
+                           'or from libmagic python bindings')
+                    raise ModuleNotFoundError(msg) from e
+                else:
+                    raise e
 
     def checksum(self, cypher=default_cypher, extra_cyphers=tuple()):
         """ checksum() always recomputes from the data
