@@ -1,3 +1,4 @@
+import os
 import sys
 import unittest
 from pathlib import PurePosixPath
@@ -84,6 +85,25 @@ class TestAugPath(Helper, unittest.TestCase):
         p2rfp1 = p2.relative_path_from(p1)
         assert e1 == p1rfp2, p1rfp2
         assert e2 == p2rfp1, p2rfp1
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='no easy way to get libmagic on windows')
+class TestMimetype(Helper, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.tf = self.test_path / 'some-text.txt'
+        self.test_path.mkdir()
+        with open(self.tf, 'wt') as f:
+            f.write('hello')
+
+    def test_mimetype(self):
+        mt = self.tf.mimetype
+        assert mt == 'text/plain', mt
+
+    def test_magic_mimetype(self):
+        mmt = self.tf._magic_mimetype
+        assert mmt == 'text/plain', mmt
+
 
 class TestAugPathCopy(Helper, unittest.TestCase):
 
