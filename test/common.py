@@ -1,4 +1,5 @@
 import os
+import atexit
 import shutil
 import pathlib
 from tempfile import gettempdir
@@ -20,6 +21,10 @@ _pid = os.getpid()
 this_file = LocalPath(__file__)
 temp_path = aug.AugmentedPath(gettempdir(), f'.augpathlib-testing-base-{_pid}')
 project_path = this_file.parent / 'test_local/test_project'
+
+# insurance in case some test forgets to clean up after itself
+atexit.register(lambda : (shutil.rmtree(temp_path, onerror=onerror)
+                          if temp_path.exists() else None))
 
 SKIP_NETWORK = ('SKIP_NETWORK' in os.environ or
                 'FEATURES' in os.environ and 'network-sandbox' in os.environ['FEATURES'])

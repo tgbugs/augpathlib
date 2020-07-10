@@ -183,12 +183,17 @@ class CachePath(AugmentedPath):
         # to limit directory size
         return self.local_objects_dir / self.cache_key
 
-    def local_data_dir_init(self, exist_ok=True):
+    def local_data_dir_init(self, exist_ok=True, symlink_objects_to=None):
         # FIXME shouldn't this always run once the
         # first time a class is initialized and then
         # modify new to never call it again?
         self.local_data_dir.mkdir(exist_ok=exist_ok)
-        self.local_objects_dir.mkdir(exist_ok=exist_ok)
+
+        if symlink_objects_to is not None:
+            self.local_objects_dir.symlink_to(symlink_objects_to)
+        else:
+            self.local_objects_dir.mkdir(exist_ok=exist_ok)
+
         try:
             self.trash.mkdir(exist_ok=exist_ok)
         except NotImplementedError:
@@ -544,6 +549,12 @@ class CachePath(AugmentedPath):
                 # we need to pick _one_ of them
                 self._remote_class = self._remote_class_factory(anchor,
                                                                 self.local_class)
+
+            if (hasattr(self, '_api_class') and
+                not hasattr(self._remote_class, '_api')):
+                # FIXME SIGH this should be one shot not a hasattr check
+                # every first time we have to get the remote for a cache
+                self._remote_class.anchorToCache(anchor)
 
             if not hasattr(self, '_remote'):
                 self._remote = self._remote_class(id, cache=self)
