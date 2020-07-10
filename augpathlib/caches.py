@@ -550,7 +550,7 @@ class CachePath(AugmentedPath):
                 self._remote_class = self._remote_class_factory(anchor,
                                                                 self.local_class)
 
-            if (hasattr(self, '_api_class') and
+            if (hasattr(self._remote_class, '_api_class') and
                 not hasattr(self._remote_class, '_api')):
                 # FIXME SIGH this should be one shot not a hasattr check
                 # every first time we have to get the remote for a cache
