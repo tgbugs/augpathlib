@@ -1019,7 +1019,7 @@ class LocalPath(EatPath, AugmentedPath):
 
     @property
     def meta_no_checksum(self):
-        return self._meta_maker(checksum=True)
+        return self._meta_maker(checksum=False)
 
     def _meta_maker(self, *, checksum=True, chunksize=None):
         """ setting chunksize will cause an etag to be calculated """
