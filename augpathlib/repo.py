@@ -175,6 +175,10 @@ class RepoHelper:
             else:
                 rpath = pathlib.PurePosixPath(path).with_suffix('') / ref / self.repo_relative_path
             return prefix + rpath.as_posix()
+        elif url_base.startswith('/') and self.__class__(url_base).exists():
+            other_rp = self.__class__(url_base)
+            other = other_rp / self.repo_relative_path
+            return other._remote_uri(prefix, infix, ref)
         else:
             raise NotImplementedError(url_base)
 
