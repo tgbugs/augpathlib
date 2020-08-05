@@ -189,10 +189,26 @@ class CachePath(AugmentedPath):
         # modify new to never call it again?
         self.local_data_dir.mkdir(exist_ok=exist_ok)
 
+        lod = self.local_objects_dir
         if symlink_objects_to is not None:
-            self.local_objects_dir.symlink_to(symlink_objects_to)
+            # NOTE this interacts with anchorClassHere
+            # we do want to always run this local_data_dir_init
+            # to avoid hard to debug errors, which means that if
+            # a user wants to override, we have to rmdir first
+            # NOTE we do NOT rmtree here, the user needs to to that
+            # explicitly so we don't accidentally remove everything
+            # NOTE this whole design is dumb, and in cases where
+            # there are just remote objects we should be stashing
+            # them in ~/.cache or similar
+            if self.local_objects_dir.is_symlink():
+                msg = f'{lod} is already symlinked to {lod.readlink()}'
+                raise NotADirectoryError(msg)
+            elif lod.exists():
+                lod.rmdir()
+
+            lod.symlink_to(symlink_objects_to)
         else:
-            self.local_objects_dir.mkdir(exist_ok=exist_ok)
+            lod.mkdir(exist_ok=exist_ok)
 
         try:
             self.trash.mkdir(exist_ok=exist_ok)
