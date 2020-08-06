@@ -931,6 +931,9 @@ class LocalPath(EatPath, AugmentedPath):
 
     def find_cache_root(self, fail=False):
         """ find the local root of the cache tree, even if we start with skips """
+        if self.is_broken_symlink():
+            return self.parent.find_cache_root(fail=fail)
+
         found_cache = None
         # try all the variants in case some symlinking weirdness is going on
         # TODO may want to detect and warn on that?
