@@ -537,10 +537,20 @@ class AugmentedPath(pathlib.Path):
 
         try:
             if self.is_dir():
+                if self.is_symlink():
+                    # see the note in shutil.rmtree about race conditions
+                    # for now we are going to hard fail if this case occures
+                    raise OSError("Cannot call rmtree on a symbolic link")
+
                 for path in self.iterdir():
-                    path.rmtree(ignore_errors=ignore_errors,
-                                onerror=onerror,
-                                DANGERZONE=DANGERZONE)
+                    if path.is_symlink():
+                        # mimic shutil behavior and don't accidentally
+                        # recurse through symlinks (keyword being curse)
+                        path.unlink()
+                    else:
+                        path.rmtree(ignore_errors=ignore_errors,
+                                    onerror=onerror,
+                                    DANGERZONE=DANGERZONE)
 
                 path = self
                 self.rmdir()

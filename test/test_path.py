@@ -76,6 +76,31 @@ class TestAugPath(Helper, unittest.TestCase):
         # this doesn't test passing deeper ...
         self.test_path.rmtree(ignore_errors=True, onerror=onerror)
 
+    def test_rmtree_symlinks(self):
+        """ make sure we don't rmtree through symlinks """
+        tp = self.test_path
+        tp.mkdir()
+        d = tp / 'dir'
+        t = tp / 'dir/target'
+        f = tp / 'dir/target/file'
+        so = tp / 'dir/source'
+        s = tp / 'dir/source/symlink'
+        d.mkdir()
+        t.mkdir()
+        f.touch()
+        so.mkdir()
+        s.symlink_to(t)
+        try:
+            s.rmtree()
+            assert False, 'should have failed!'
+        except OSError:
+            pass
+
+        so.rmtree()
+        assert not so.exists()
+        assert f.exists() and t.exists()
+        self.test_path.rmtree(onerror=onerror)
+
     def test_relative_path_from(self):
         p1 = self.test_path / 'a' / 'b' / 'c' / 'd'
         p2 = self.test_path / 'e' / 'f' / 'g' / 'h'
