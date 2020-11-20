@@ -59,6 +59,20 @@ class TestEat(unittest.TestCase):
         test = self.dir.xattrs()
         assert test
 
+    def test_dir_relative(self):
+        self.dir.setxattr('key', b'value')
+        with self.dir:
+            test = self.dir.xattrs()
+
+        assert test
+
+    def test_dir_relative_dot(self):
+        self.dir.setxattr('key', b'value')
+        with self.dir:
+            test = self._test_class('.').xattrs()
+
+        assert test
+
     def test_file(self):
         self.file.setxattr('key', b'value')
         test = self.file.xattrs()

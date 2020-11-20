@@ -228,6 +228,14 @@ class ADSHelper(EatHelper):
             raise exc.NoStreamError((self, key)) from e
 
     def _xattrs(self):
+        if not self.is_absolute():
+            # the nature of the '.' path on windows means that
+            # _streams will severly misbehave so we resolve the path
+            # before retrieving streams, note that you can shoot
+            # yourself in the foot if you are carrying around an
+            # unresolved path and are not where you think you are
+            self = self.resolve()
+
         out = {}
         for stream in self._streams:
             _base, k = stream.name.split(':', 1)

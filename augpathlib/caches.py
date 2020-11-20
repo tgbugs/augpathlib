@@ -1063,7 +1063,7 @@ class SymlinkCache(CachePath):
                 # trash old versions instead of just unlinking
                 pc = self.local.cache
                 trash = pc.trash
-                self.rename(trash / f'{pc.parent.id}-{meta.id}-{self.name}')
+                self.rename(trash / f'{pc.parent.id}-{meta.id}-{self.name}')  # FIXME broken on windows
                 #self.unlink()
 
             # FIXME if an id starts with / then the local name is overwritten due to pathlib logic
