@@ -34,6 +34,7 @@ _IGNORED_ERROS = (ENOENT, ENOTDIR, EBADF, ELOOP)
 _IGNORED_WINERRORS = (
     123,  # 'The filename, directory name, or volume label syntax is incorrect' -> 22 EINVAL
 )
+
 if sys.platform == 'darwin':
     _IGNORED_ERROS += (errno.ENAMETOOLONG,)
 
@@ -55,6 +56,8 @@ else:
 
 if sys.version_info >= (3, 7):
     pathlib._IGNORED_ERROS += (ELOOP,)
+    pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
+    _IGNORED_WINERRORS = pathlib._IGNORED_WINERRORS
     if sys.platform == 'darwin':
         # darwin gets very confused by self referential symlinks
         # and it seems that they stack up on eachother while being
@@ -496,7 +499,7 @@ class AugmentedPath(pathlib.Path):
             temp.rename(self)
             temp_dir.rmdir()
 
-    if sys.platform != 'linux': # just look at us not using pathlib's infra ...
+    if sys.platform != 'linux':  # just look at us not using pathlib's infra ...
         _swap = swap.swap_not_implemented
     else:
         _swap = swap.swap_linux

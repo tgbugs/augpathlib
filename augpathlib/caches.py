@@ -157,11 +157,19 @@ class CachePath(AugmentedPath):
         return self.trash / self.name  # FIXME SIGH
 
     def crumple(self):  # FIXME change name to something more obvious ...
+        trashed = self._trashed_path
+        tp = trashed.parent
+        if not tp.exists():
+            # we can ensure that self.trash exists at startup
+            # but if a subclass adds intervening folders, we
+            # need to catch that here and create them
+            tp.mkdir(parents=True)
+
         try:
-            self.rename(self._trashed_path)
+            self.rename(trashed)
         except OSError as e:
             if e.errno == 36:  # File name too long  # SIGH
-                log.critical(f'Had to rename trash {self._trashed_path} -> {self._trashed_path_short}')
+                log.critical(f'Had to rename trash {trashed} -> {self._trashed_path_short}')
                 self.rename(self._trashed_path_short)
             else:
                 raise e
@@ -1061,8 +1069,20 @@ class SymlinkCache(CachePath):
                 log.debug('Metadata exists, but ids match so will update')
 
                 # trash old versions instead of just unlinking
-                pc = self.local.cache
-                self.rename(pc._trashed_path)
+                primary_cache = self.local.cache
+                # the primary cache has the same path as self which
+                # means that we can call crumple directly on the
+                # primary_cache and it will behave correctly trying to
+                # use primary_cache._trashed_path directly could fail
+                # if the trashed path has a non-existent parent
+                try:
+                    primary_cache.crumple()
+                except FileExistsError:
+                    # a file by this name with this id has already been
+                    # crumpled so we unlink here instead
+                    self.unlink()
+
+                #self.rename(pc._trashed_path)
                 #trash = pc.trash
                 #self.rename(trash / fs_safe_id(f'{pc.parent.id}-{meta.id}-{self.name}'))
                 #self.unlink()
