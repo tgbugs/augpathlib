@@ -38,6 +38,18 @@ def onerror_windows_readwrite_remove(action, name, exc):
     os.remove(name)
 
 
+def fs_safe_id(string):
+    """ Make a string safe for use on file systems.
+    NOTE this does NOT gurantee uniqueness!
+    NOTE this only deals with bad printable chars not
+    the full pathology that one might encounter. """
+    # see https://stackoverflow.com/questions/1976007/
+    evils = ' \n\t*|:\/<>"\\?'
+    for evil in evils:
+        string = string.replace(evil, '-')
+    return string
+
+
 def sysidpath(ignore_options=False, path_class=Path):
     """ get a unique identifier for the machine running this function """
     # in the event we have to make our own

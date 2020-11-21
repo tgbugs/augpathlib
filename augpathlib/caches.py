@@ -3,7 +3,7 @@ import warnings
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.core import AugmentedPath, EatPath
-from augpathlib.utils import log, default_cypher
+from augpathlib.utils import log, default_cypher, fs_safe_id
 from augpathlib.utils import LOCAL_DATA_DIR, SPARSE_MARKER
 from augpathlib import remotes
 
@@ -150,7 +150,7 @@ class CachePath(AugmentedPath):
 
     @property
     def _trashed_path(self):
-        return self.trash / f'{self.parent.id}-{self.id}-{self.name}'
+        return self.trash / fs_safe_id(f'{self.parent.id}-{self.id}-{self.name}')
 
     @property
     def _trashed_path_short(self):
@@ -1062,8 +1062,9 @@ class SymlinkCache(CachePath):
 
                 # trash old versions instead of just unlinking
                 pc = self.local.cache
-                trash = pc.trash
-                self.rename(trash / f'{pc.parent.id}-{meta.id}-{self.name}')  # FIXME broken on windows
+                self.rename(pc._trashed_path)
+                #trash = pc.trash
+                #self.rename(trash / fs_safe_id(f'{pc.parent.id}-{meta.id}-{self.name}'))
                 #self.unlink()
 
             # FIXME if an id starts with / then the local name is overwritten due to pathlib logic
