@@ -54,6 +54,26 @@ class TestEat(unittest.TestCase):
         streams = list(self.dir._streams)
         assert streams
 
+    def test_pathological(self):
+        hrm = [
+            'a',
+            #'/b',
+            'c/d',
+            'e/f/',
+            #'/g/',
+            #'/h/i',
+            #'/j/k/',
+        ]
+        asdf = [self.dir / p for p in hrm]
+        bads = []
+        for p in asdf:
+            p.mkdir(parents=True)
+            p.setxattr(b'test.hello', b'test')
+            if p.getxattr(b'test.hello') != b'test':
+                bads.append(p)
+
+        assert not bads, bads
+
     def test_dir(self):
         self.dir.setxattr('key', b'value')
         test = self.dir.xattrs()

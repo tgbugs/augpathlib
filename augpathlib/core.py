@@ -143,7 +143,7 @@ class ADSHelper(EatHelper):
             # there seems to be nothing we can do about it
             raise ValueError('windows and single letter file names dont get along')
 
-        return AugmentedPath(*start, last + ':' + name)
+        return AugmentedPath(*start, './' + last + ':' + name)
 
     @property
     def _streamname(self):
