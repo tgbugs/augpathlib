@@ -68,8 +68,8 @@ class TestEat(unittest.TestCase):
         bads = []
         for p in asdf:
             p.mkdir(parents=True)
-            p.setxattr(b'test.hello', b'test')
-            if p.getxattr(b'test.hello') != b'test':
+            p.setxattr('test.hello', b'test')
+            if p.getxattr('test.hello') != b'test':
                 bads.append(p)
 
         assert not bads, bads
