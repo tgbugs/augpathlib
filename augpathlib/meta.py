@@ -222,8 +222,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             return _as_symlink(self)
 
         @classmethod
-        def from_symlink(cls, symlink_path, _from_symlink=self.from_symlink):
-            return _from_symlink(symlink_path)
+        def from_symlink(cls, symlink_path, _from_symlink=self.from_symlink, **kwargs):
+            return _from_symlink(symlink_path, **kwargs)
 
         self.pathmetaclass.as_symlink = as_symlink
         self.pathmetaclass.from_symlink = from_symlink
@@ -314,14 +314,16 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         path_string = id + f'/.{self.write_version}.' + self.fieldsep.join(gen)
         return pathlib.PurePosixPath(path_string)
 
-    def from_symlink(self, symlink_path):
+    def from_symlink(self, symlink_path, match_name=True):
         """ contextual portion to make sure something weird isn't going on
             e.g. that a link got switched to point to another name somehow """
         raw_symlink = symlink_path.readlink(raw=True)
         pure_symlink = pathlib.PurePosixPath(raw_symlink)
         name, *parts = pure_symlink.parts
         msg = (symlink_path.name, name)
-        assert symlink_path.name == name, msg
+        if match_name and symlink_path.name != name:
+            raise exc.CircularSymlinkNameError(msg)
+
         return self.from_parts(parts)
 
     def from_parts(self, parts):

@@ -150,7 +150,13 @@ class CachePath(AugmentedPath):
 
     @property
     def _trashed_path(self):
-        return self.trash / fs_safe_id(f'{self.parent.id}-{self.id}-{self.name}')
+        # XXX warning this can overflow file name length
+        # you should probably override this for your specific application
+        # because by default this probably does not provide a pointer back
+        # to where the file originally lived and you would need to store
+        # that information elsewhere if you want to be able to restore
+        # logging the moves might work
+        return self.trash / fs_safe_id(self.id)
 
     @property
     def _trashed_path_short(self):
@@ -776,7 +782,7 @@ class CachePath(AugmentedPath):
         else:
             log.info(f'Remote for {self} has been deleted. Moving to trash.')
             try:
-                self.rename(self.trash / f'{self.parent.id}-{self.id}-{self.name}')
+                self.rename(self._trashed_path)
             except FileNotFoundError as e:
                 if not self.trash.exists():
                     self.trash.mkdir()
@@ -992,18 +998,44 @@ class SymlinkCache(CachePath):
 
     @property
     def meta(self):
+        # LOL PYTHON
+        # Oh, you wanted to abstract that property for use on another
+        # class?  I'm sorry, we don't allow that here, if you call any
+        # instance functions you will have to manually include all of
+        # those on the other class too. SIGH.
+
+        # Or you do what we do here which is ensure that the
+        # implementation of a property for a class is always tied to
+        # that class which is implicit when you define code in a
+        # property, but is immediately lost the second you call out to
+        # instance function which could be different in the class that
+        # wants to reuse the property
+        return SymlinkCache._meta_impl(self)
+
+    @classmethod
+    def _meta_impl(cls, self, match_name=True):
         if hasattr(self, '_meta'):
             return self._meta
 
         if self.is_symlink():
             if not self.exists():  # if a symlink exists it is something other than what we want
                 #assert pathlib.PurePosixPath(self.name) == self.readlink().parent.parent
-                return PathMeta.from_symlink(self)
+                return PathMeta.from_symlink(self, match_name=match_name)
             else:
-                raise exc.PathExistsError(f'Target of symlink exists!\n{self} -> {self.resolve()}')
+                msg = f'Target of symlink exists!\n{self} -> {self.resolve()}'
+                raise exc.PathExistsError(msg)
 
         else:
-            return super().meta
+            raise exc.NoCachedMetadataError(self)
+
+            # XXX actually I think calling into super was a hold-over
+            # from an old broken implementation that simply needs to
+            # be removed, because all the callers of SymlinkCache().meta
+            # expect it to fail, not return some other metadata
+
+            # you have to pass type(self) and self to super
+            # otherwise you get the cls.meta property
+            #return super(type(self), self).meta
 
     @meta.setter
     def meta(self, pathmeta):

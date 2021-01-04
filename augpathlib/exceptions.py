@@ -40,8 +40,13 @@ class MetadataCorruptionError(AugPathlibError):
     """ there is already cached metadata and id does not match """
 
 
+class CircularSymlinkNameError(AugPathlibError):
+    """ path name does not match name embedded in symlink """
+
+
 class NoStreamError(AugPathlibError):
     """ no stream with that name exists similar to file not found or no data """
+
 
 class NoFileIdError(AugPathlibError):
     """ no file_id """

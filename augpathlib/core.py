@@ -136,6 +136,8 @@ class ADSHelper(EatHelper):
         return namespace + '.' + key  # FIXME maybe include xattrs. as well ??
 
     def _stream(self, name):
+        # FIXME single char folder names are completely evil here
+        # you they are not absolute and they resolve to themselves
         *start, last = self.parts
         if not start and len(last) == 1:
             # single letter file names with no extension
@@ -217,6 +219,7 @@ class ADSHelper(EatHelper):
             f.write(bytes_value)
 
     def setxattrs(self, xattr_dict, namespace=XATTR_DEFAULT_NS):
+        # FIXME this is almost certainly bugged for Path('.') too
         for k, v in xattr_dict.items():
             self.setxattr(k, v, namespace=namespace)
 
@@ -250,6 +253,9 @@ class ADSHelper(EatHelper):
         return out
 
     def xattrs(self, namespace=XATTR_DEFAULT_NS):
+        # FIXME broken for Path('.') causes an error in _stream
+        # FIXME broken if run with path: path.xattrs() -> returns {}
+        # I think that on windows these paths must always be resolved?
         # decode keys later
         ns_length_p1 = len(namespace) + 1
         try:
@@ -623,6 +629,9 @@ class AugmentedPath(pathlib.Path):
 
     @property
     def mimetype(self):
+        if self.is_dir():
+            return 'inode/directory'  # matches _magic_mimetype
+
         if not self.is_absolute():  # needed for safe as_uri
             self = self.resolve()
 
