@@ -633,11 +633,19 @@ class AugmentedPath(pathlib.Path):
             return 'inode/directory'  # matches _magic_mimetype
 
         if not self.is_absolute():  # needed for safe as_uri
-            self = self.resolve()
+            if self.is_broken_symlink():
+                self = self.absolute()
+            else:
+                self = self.resolve()
 
         mime, encoding = mimetypes.guess_type(self.as_uri())
         if mime:
             return mime
+        elif hasattr(self, '_suffix_mimetypes') and self._suffix_mimetypes:
+            # FIXME TODO make a real interface for these
+            suffixes = tuple(self.suffixes)
+            if suffixes in self._suffix_mimetypes:
+                return self._suffix_mimetypes[suffixes]
 
     @property
     def encoding(self):
@@ -1174,7 +1182,7 @@ class LocalPath(EatPath, AugmentedPath):
         # especially when updating a file ...
         # storing history in the symlink cache also an option?
         log.debug(f'writing to {self}')
-        chunk1 = next(generator)  # if an error occurs don't open the file
+        chunk1 = next(generator)  # if an error occurs don't open the file FIXME I think this might be causing the zero size files?
         with open(self, 'wb') as f:
             f.write(chunk1)
             for chunk in generator:
@@ -1190,6 +1198,8 @@ class LocalPath(EatPath, AugmentedPath):
 
     def _data_setter(self, generator):
         """ a data setter that can be used in a chain of generators """
+        # FIXME if the generator can silently fail that is very very bad news ...
+        # but how/why would they be silently failing ??!
         log.debug(f'writing to {self}')
         chunk1 = next(generator)  # if an error occurs don't open the file
         with open(self, 'wb') as f:

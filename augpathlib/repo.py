@@ -189,6 +189,7 @@ class RepoHelper:
         return self._remote_uri('https://raw.githubusercontent.com', ref=ref)
 
     def latest_commit(self, rev=None):
+        """ the latest commit for the current path NOT the latest commit for the repo """
         try:
             return next(self.repo.iter_commits(rev=rev,
                                                paths=self.expanduser().resolve().as_posix(),
