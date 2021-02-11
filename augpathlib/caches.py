@@ -566,6 +566,11 @@ class CachePath(AugmentedPath):
         anchor = self.anchor
         if anchor is None:  # the very first ...
             # in which case we need the id for factory AND class
+            if not self.is_absolute():
+                # OR we are dealing with a relative path
+                # can't use resolve because we might be on a circular symlink
+                return self.absolute().remote
+
             self._bootstrapping_id = id  # so we set it again
             anchor = self  # could double check if the id has the info too ...
 
