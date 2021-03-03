@@ -214,8 +214,12 @@ class CachePath(AugmentedPath):
             # NOTE this whole design is dumb, and in cases where
             # there are just remote objects we should be stashing
             # them in ~/.cache or similar
-            if self.local_objects_dir.is_symlink():
+            if lod.is_symlink():
                 msg = f'{lod} is already symlinked to {lod.readlink()}'
+                if lod.resolve() == symlink_objects_to.resolve():
+                    log.info(msg)
+                    return
+
                 raise NotADirectoryError(msg)
             elif lod.exists():
                 lod.rmdir()
@@ -815,8 +819,25 @@ class CachePath(AugmentedPath):
                 self.touch()
                 self._meta_setter(meta)
 
+            # FIXME I'm 99% certain that our mysterious zero size files are happening here
+            # and the error is getting caught and silence somehow
             log.info(f'Fetching remote via cache id {self.id} -> {self.local}')
+            existing_cache_cache = self.local_object_cache_path.exists()
             self.local.data = self.data  # note that this should trigger storage to .ops/objects
+            if self.local.size != meta.size:
+                m2 = '.operations/objects/' + self.id.replace(':', '\:')  # FIXME not abstracted
+                msg = (f'{self.local.size} != {meta.size} for {self.local}\n{m2}\n'
+                       f'from previous fetch? {existing_cache_cache}')
+                raise ValueError(msg)
+
+            _lc = self.local.checksum()
+            if meta.checksum is not None and _lc != meta.checksum:
+                # FIXME these checks need to be happning inside of
+                # the local.data setter since otherwise this is overkill
+                #breakpoint()
+                msg = f'{_lc!r} != {meta.checksum!r} for {self!r}'
+                log.critical(msg)
+                #raise BaseException()
 
         if size_not_ok:
             log.warning(f'File is over the size limit {meta.size.mb} > {size_limit_mb}')
