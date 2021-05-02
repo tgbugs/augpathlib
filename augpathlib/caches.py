@@ -133,6 +133,7 @@ class CachePath(AugmentedPath):
                 raise exc.NoCachedMetadataError(self.local)
 
             elif isinstance(path, LocalPath):
+                # XXX FIXME probably remove this
                 path._cache = self
 
         super().__init__()
@@ -222,7 +223,13 @@ class CachePath(AugmentedPath):
 
                 raise NotADirectoryError(msg)
             elif lod.exists():
-                lod.rmdir()
+                try:
+                    lod.rmdir()
+                except OSError as e:
+                    msg = ('local objects dir already exists did you mean '
+                           'to run with symlink_objects_to set?')
+                    log.error(msg)
+                    raise e
 
             lod.symlink_to(symlink_objects_to)
         else:
@@ -713,7 +720,6 @@ class CachePath(AugmentedPath):
 
         root = self.parent.local.find_cache_root()
         if root is None:
-            #breakpoint()
             raise exc.NotInProjectError(f'{self.parent.local} is not in a project!')
 
         breakpoint()
@@ -1375,3 +1381,4 @@ SshCache._bind_flavours()
 
 from augpathlib.core import LocalPath
 SshCache._local_class = LocalPath
+ReflectiveCache._local_class = LocalPath

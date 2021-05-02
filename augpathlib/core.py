@@ -838,6 +838,16 @@ class LocalPath(EatPath, AugmentedPath):
 
     _bind_sysid = classmethod(_bind_sysid_)
 
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls, *args, **kwargs)
+        if args and isinstance(args[0], LocalPath):
+            # XXX I'm sure this will break cases where we want to change from
+            # one cache class to another by changing which local path class we
+            # construct, but wow this is way too far gone already
+            self._cache_class = args[0]._cache_class
+
+        return self
+
     @classmethod
     def setup(cls, cache_class, remote_class_factory):
         """ call this once to bind everything together """
@@ -867,13 +877,19 @@ class LocalPath(EatPath, AugmentedPath):
         # otherwise it will error (correctly)
         if not hasattr(self, '_cache'):
             try:
-                self._cache_class(self)  # we don't have to assign here because cache does it
+                self._cache = self._cache_class(self)
+                # +we don't have to assign here because cache does it+ XXX
+                # assign here anyway because it makes it clear what is going on
+                # and avoids spooky action at a distance and avoids implicit
+                # expectations on the cache constructor
             except exc.NoCachedMetadataError as e:
                 #log.error(e)
                 return None
             except TypeError as e:
                 if self._cache_class is None:
                     return None
+                else:
+                    raise e
 
         return self._cache
 
