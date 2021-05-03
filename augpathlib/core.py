@@ -1182,6 +1182,30 @@ class LocalPath(EatPath, AugmentedPath):
 
                 yield data
 
+    def _write_chunks_ntfs(self, generator):
+        # SO. It turns out that open(thing, 'wb') has fundamentally different
+        # semantics on posix and windows (wheeeeeeeeeee!) on posix it keeps
+        # xattrs intact, on windows it erases them AAAAAAAAAAAAAAAAAAAAAAA
+        chunk1 = next(generator)  # if an error occurs don't open the file FIXME I think this might be causing the zero size files?
+        with open(self, 'ab') as f:
+            f.seek(0)
+            f.truncate()
+            f.write(chunk1)
+            for chunk in generator:
+                #log.debug(chunk)
+                f.write(chunk)
+
+    def _write_chunks_posix(self, generator):
+        chunk1 = next(generator)  # if an error occurs don't open the file FIXME I think this might be causing the zero size files?
+        with open(self, 'wb') as f:
+            f.write(chunk1)
+            for chunk in generator:
+                #log.debug(chunk)
+                f.write(chunk)
+
+    _write_chunks = (
+        _write_chunks_ntfs if os.name == 'nt' else _write_chunks_posix)
+
     @data.setter
     def data(self, generator):
         cache = self.cache
@@ -1198,21 +1222,19 @@ class LocalPath(EatPath, AugmentedPath):
         # especially when updating a file ...
         # storing history in the symlink cache also an option?
         log.debug(f'writing to {self}')
-        chunk1 = next(generator)  # if an error occurs don't open the file FIXME I think this might be causing the zero size files?
-        with open(self, 'wb') as f:
-            f.write(chunk1)
-            for chunk in generator:
-                #log.debug(chunk)
-                f.write(chunk)
-
+        self._write_chunks(generator)
         if cache is not None:  # FIXME cache
             if not cache.meta:
+                # XXX FIXME when this fails to set things downstream fail as well
+                # so we see things like None type has no attribute xyz because the
+                # cached metadata didn't get set correctly, this is happening in
+                # some subclass where cache.meta doesn't have a setter
                 cache.meta = cmeta  # glories of persisting xattrs :/
             # yep sometimes the xattrs get  blasted >_<
             assert cache.meta
             assert self.cache.meta
 
-    def _data_setter(self, generator):
+    def _data_setter(self, generator):  # FIXME ntfs ads issues
         """ a data setter that can be used in a chain of generators """
         # FIXME if the generator can silently fail that is very very bad news ...
         # but how/why would they be silently failing ??!

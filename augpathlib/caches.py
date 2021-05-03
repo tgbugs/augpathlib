@@ -963,6 +963,7 @@ ReflectiveCache._bind_flavours()
 
 
 class EatCache(EatPath, CachePath):
+
     xattr_prefix = None
 
     @property
@@ -1165,6 +1166,7 @@ SymlinkCache._bind_flavours()
 
 
 class PrimaryCache(CachePath):
+
     @property
     def meta(self):
         #if hasattr(self, '_in_bootstrap'):
