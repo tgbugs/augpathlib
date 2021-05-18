@@ -1234,13 +1234,13 @@ class LocalPath(EatPath, AugmentedPath):
             assert cache.meta
             assert self.cache.meta
 
-    def _data_setter(self, generator):  # FIXME ntfs ads issues
+    def _data_setter(self, generator, append=False):  # FIXME ntfs ads issues
         """ a data setter that can be used in a chain of generators """
         # FIXME if the generator can silently fail that is very very bad news ...
         # but how/why would they be silently failing ??!
         log.debug(f'writing to {self}')
         chunk1 = next(generator)  # if an error occurs don't open the file
-        with open(self, 'wb') as f:
+        with open(self, 'ab' if append else 'wb') as f:
             f.write(chunk1)
             yield chunk1
             for chunk in generator:
