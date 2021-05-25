@@ -12,6 +12,11 @@ from augpathlib.utils import log, FileSize, red
 
 
 def isoformat(datetime_instance, timespec='auto'):
+    kwargs = {}
+    if isinstance(datetime_instance, datetime):
+        # don't pass timespec if type is not date not datetime
+        kwargs['timespec'] = timespec
+
     return (datetime_instance
             .isoformat(timespec=timespec)
             .replace('.', ',')
