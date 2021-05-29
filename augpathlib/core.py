@@ -840,11 +840,13 @@ class LocalPath(EatPath, AugmentedPath):
 
     def __new__(cls, *args, **kwargs):
         self = super().__new__(cls, *args, **kwargs)
-        if args and isinstance(args[0], LocalPath):
+        #if args and isinstance(args[0], LocalPath):
             # XXX I'm sure this will break cases where we want to change from
             # one cache class to another by changing which local path class we
             # construct, but wow this is way too far gone already
-            self._cache_class = args[0]._cache_class
+            # XXX AAAAND it has, and it is extremely insanity inducing and
+            # hard to debug
+            #self._cache_class = args[0]._cache_class
 
         return self
 
