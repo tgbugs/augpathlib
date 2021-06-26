@@ -1,6 +1,6 @@
 # augpathlib
 [![PyPI version](https://badge.fury.io/py/augpathlib.svg)](https://pypi.org/project/augpathlib/)
-[![Build Status](https://travis-ci.org/tgbugs/augpathlib.svg?branch=master)](https://travis-ci.org/tgbugs/augpathlib)
+[![Build Status](https://travis-ci.com/tgbugs/augpathlib.svg?branch=master)](https://travis-ci.com/tgbugs/augpathlib)
 [![Coverage Status](https://coveralls.io/repos/github/tgbugs/augpathlib/badge.svg?branch=master)](https://coveralls.io/github/tgbugs/augpathlib?branch=master)
 
 Augmented pathlib. Everything else you could do with a path.
