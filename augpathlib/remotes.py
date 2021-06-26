@@ -647,8 +647,10 @@ class SshRemote(RemotePath, pathlib.PurePath):
             atexit.register(lambda:(session.sendeof(), session.close()))
             cls.host = host
             cls.session = session
-            cls._uid, *cls._gids = [int(i) for i in (cls._ssh('echo $(id -u) $(id -G)')
-                                                    .decode().split(' '))]
+            cls._ssh("bind 'set enable-bracketed-paste off'")
+            cls._uid, *cls._gids = [int(i) for i in
+                                    cls._ssh('echo $(id -u) $(id -G)')
+                                    .decode().split(' ')]
         else:
             raise ValueError(f'{cls} already bound an remote to {cls._anchor}')
 
