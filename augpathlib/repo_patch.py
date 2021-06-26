@@ -12,9 +12,38 @@ class _Repo(git.Repo):  # FIXME should we subclass Repo for this or patch ??
         else:
             raise ValueError(f'No ref with name: {ref_name}')
 
+    def currentRefName(self):
+        "return the branch, tag, or "
+        if self.head.is_detached:
+            hexsha, *ref_name = self.head.commit.name_rev.split()
+            if ref_name:
+                ref_name = ref_name[0]
+                if '/' in ref_name:
+                    tags, tag_name = ref_name.split('/', 1)
+                    if tags == 'tags':
+                        return tag_name
+                    elif '~' in tag_name:
+                        # these refs are unstable because they count
+                        # backward from the first named ref that
+                        # occures after them in the tree, better to
+                        # use the hexsha in those cases
+                        return None
+                    else:
+                        return ref_name
+                else:
+                    return None
+            else:
+                # yes hashes are technically refs, but we don't know
+                # what the caller will want to do in that situation so
+                # we return None so they can decide for themselves
+                return None
+        else:
+            return self.active_branch.name
+
 
 # monkey patch git.Repo
 git.Repo.getRef = _Repo.getRef
+git.Repo.currentRefName = _Repo.currentRefName
 
 
 class _Reference(git.Reference):
