@@ -1,4 +1,5 @@
 import os
+import io
 import stat
 import base64
 import hashlib
