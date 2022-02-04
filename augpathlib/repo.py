@@ -143,10 +143,7 @@ class RepoHelper:
 
     path_relative_repo = repo_relative_path
 
-    def _remote_uri(self, prefix, infix=None, ref=None):
-        if isinstance(ref, self._git.Commit):
-            ref = str(ref)
-
+    def _remote_helper(self):
         repo = self.repo
         remote = repo.remote()
         rnprefix = remote.name + '/'
@@ -161,6 +158,14 @@ class RepoHelper:
             _, group = netloc.split(':')
             netloc = 'github.com'
             path = '/' + group + path
+
+        return repo, rnprefix, url_base, netloc, path
+
+    def _remote_uri(self, prefix, infix=None, ref=None):
+        if isinstance(ref, self._git.Commit):
+            ref = str(ref)
+
+        repo, rnprefix, url_base, netloc, path = self._remote_helper()
 
         if netloc == 'github.com':
 
@@ -181,6 +186,12 @@ class RepoHelper:
             return other._remote_uri(prefix, infix, ref)
         else:
             raise NotImplementedError(url_base)
+
+    def remote_uri_api(self, endpoint=''):
+        # technically this is for the whole repo
+        repo, rnprefix, url_base, netloc, path = self._remote_helper()
+        p = pathlib.PurePosixPath(path).with_suffix('')
+        return f'https://api.github.com/repos{p}' + endpoint
 
     def remote_uri_human(self, ref=None):
         return self._remote_uri('https://github.com', infix='blob', ref=ref)
