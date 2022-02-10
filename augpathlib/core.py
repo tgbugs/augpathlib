@@ -55,15 +55,19 @@ else:
 
 
 if sys.version_info >= (3, 7):
-    pathlib._IGNORED_ERROS += (ELOOP,)
     pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
     _IGNORED_WINERRORS = pathlib._IGNORED_WINERRORS
-    if sys.platform == 'darwin':
-        # darwin gets very confused by self referential symlinks
-        # and it seems that they stack up on eachother while being
-        # dereferenced until the link name becomes too long
-        pathlib._IGNORED_ERROS += (errno.ENAMETOOLONG,)
-
+    if sys.version_info < (3, 11):
+        pathlib._IGNORED_ERROS += (ELOOP,)
+        if sys.platform == 'darwin':
+            # darwin gets very confused by self referential symlinks
+            # and it seems that they stack up on eachother while being
+            # dereferenced until the link name becomes too long
+            pathlib._IGNORED_ERROS += (errno.ENAMETOOLONG,)
+    else:
+        pathlib._IGNORED_ERRNOS += (ELOOP,)
+        if sys.platform == 'darwin':
+            pathlib._IGNORED_ERRNOS += (errno.ENAMETOOLONG,)
 else:
 
     def _is_dir(entry):
@@ -360,7 +364,7 @@ class AugmentedPath(pathlib.Path):
     def _abstract_class(cls):
         return cls.__abstractpath
 
-    if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
+    if sys.version_info >= (3, 10):
         def __new__(cls, *args, **kwargs):
             if cls is cls.__abstractpath:
                 cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath

@@ -287,7 +287,7 @@ class CachePath(AugmentedPath):
         #out._meta_setter(cache.meta)
         return out
 
-    if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
+    if sys.version_info >= (3, 10):
         def _make_child(self, args, remote, update_meta=True):
             drv, root, parts = self._parse_args(args)
             drv, root, parts = self._flavour.join_parsed_parts(
