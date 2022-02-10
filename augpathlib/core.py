@@ -360,15 +360,26 @@ class AugmentedPath(pathlib.Path):
     def _abstract_class(cls):
         return cls.__abstractpath
 
-    def __new__(cls, *args, **kwargs):
-        if cls is cls.__abstractpath:
-            cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
-        self = cls._from_parts(args, init=False)
-        if not self._flavour.is_supported:
-            raise NotImplementedError("cannot instantiate %r on your system"
-                                      % (cls.__name__,))
-        self._init()
-        return self
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
+        def __new__(cls, *args, **kwargs):
+            if cls is cls.__abstractpath:
+                cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
+            self = cls._from_parts(args)
+            if not self._flavour.is_supported:
+                raise NotImplementedError("cannot instantiate %r on your system"
+                                        % (cls.__name__,))
+            return self
+
+    else:
+        def __new__(cls, *args, **kwargs):
+            if cls is cls.__abstractpath:
+                cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
+            self = cls._from_parts(args, init=False)
+            if not self._flavour.is_supported:
+                raise NotImplementedError("cannot instantiate %r on your system"
+                                        % (cls.__name__,))
+            self._init()
+            return self
 
     def exists(self):
         """ Turns out that python doesn't know how to stat symlinks that point

@@ -1,3 +1,4 @@
+import sys
 import pathlib
 import warnings
 from augpathlib import exceptions as exc
@@ -286,18 +287,32 @@ class CachePath(AugmentedPath):
         #out._meta_setter(cache.meta)
         return out
 
-    def _make_child(self, args, remote, update_meta=True):
-        drv, root, parts = self._parse_args(args)
-        drv, root, parts = self._flavour.join_parsed_parts(
-            self._drv, self._root, self._parts, drv, root, parts)
-        child = self._from_parsed_parts(drv, root, parts, init=False)  # short circuits
-        child._init()
-        if isinstance(remote, remotes.RemotePath):
-            remote._cache_setter(child, update_meta=update_meta)
-        else:
-            raise ValueError('should not happen')
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
+        def _make_child(self, args, remote, update_meta=True):
+            drv, root, parts = self._parse_args(args)
+            drv, root, parts = self._flavour.join_parsed_parts(
+                self._drv, self._root, self._parts, drv, root, parts)
+            child = self._from_parsed_parts(drv, root, parts)  # short circuits
+            if isinstance(remote, remotes.RemotePath):
+                remote._cache_setter(child, update_meta=update_meta)
+            else:
+                raise ValueError('should not happen')
 
-        return child
+            return child
+
+    else:
+        def _make_child(self, args, remote, update_meta=True):
+            drv, root, parts = self._parse_args(args)
+            drv, root, parts = self._flavour.join_parsed_parts(
+                self._drv, self._root, self._parts, drv, root, parts)
+            child = self._from_parsed_parts(drv, root, parts, init=False)  # short circuits
+            child._init()
+            if isinstance(remote, remotes.RemotePath):
+                remote._cache_setter(child, update_meta=update_meta)
+            else:
+                raise ValueError('should not happen')
+
+            return child
 
     def bootstrap(self, meta, *,
                   parents=False,
