@@ -327,6 +327,14 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         name, *parts = pure_symlink.parts
         msg = (symlink_path.name, name)
         if match_name and symlink_path.name != name:
+            _l = symlink_path.as_posix().lower()
+            l = pathlib.Path(_l).parent
+            u = pathlib.Path(_l).parent
+            if l.exists() and u.exists():
+                # You've been hit by a case insenstivie file system!
+                # path.exists() -> True but FileNotFoundError woo
+                raise FileNotFoundError(symlink_path)
+
             raise exc.CircularSymlinkNameError(msg)
 
         return self.from_parts(parts)
