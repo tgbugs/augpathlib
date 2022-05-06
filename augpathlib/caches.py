@@ -811,14 +811,7 @@ class CachePath(AugmentedPath):
             return new
         else:
             log.info(f'Remote for {self} has been deleted. Moving to trash.')
-            try:
-                self.rename(self._trashed_path)
-            except FileNotFoundError as e:
-                if not self.trash.exists():
-                    self.trash.mkdir()
-                    log.info('created {self.trash}')
-                else:
-                    raise e
+            trashed = self.crumple()
 
     def fetch(self, size_limit_mb=2):
         """ bypass remote to fetch directly based on stored meta """
