@@ -563,7 +563,7 @@ class CachePath(AugmentedPath):
             lc = self.local.meta.checksum
             cc = self.meta.checksum
             if lc != cc:
-                msg = f'Checksums do not match!\n(!=\n{lc}\n{cc}\n)'
+                msg = f'Checksums do not match!\n(!=\n{lc.hex()}\n{cc.hex()}\n)'
                 log.critical(msg)  # haven't figured out how to comput the bf checksums yet
                 #raise exc.ChecksumError(msg)
         elif meta.size is not None:
@@ -575,7 +575,7 @@ class CachePath(AugmentedPath):
                 raise exc.SizeError(f'Sizes do not match!\n(!=\n{ls}\n{cs}\n)')
         else:
             log.warning(f'No checksum and no size! Your data is at risk!\n'
-                        '{self.remote!r} -> {self.local!r}! ')
+                        f'{self.remote!r} -> {self.local!r}! ')
 
     @property
     def remote(self):
@@ -849,7 +849,7 @@ class CachePath(AugmentedPath):
                 # FIXME these checks need to be happning inside of
                 # the local.data setter since otherwise this is overkill
                 #breakpoint()
-                msg = f'{_lc!r} != {meta.checksum!r} for {self!r}'
+                msg = f'{_lc.hex()!r} != {meta.checksum.hex()!r} for {self!r}'
                 log.critical(msg)
                 #raise BaseException()
 
@@ -1262,7 +1262,12 @@ class PrimaryCache(CachePath):
                 continue
 
             if vold is not None and vold != vnew:
-                log.info(f'{old.id} field {k} changed from {vold} -> {vnew}')
+                if k == 'checksum':
+                    _vold, _vnew = vold.hex(), vnew.hex()
+                else:
+                    _vold, _vnew = vold, vnew
+
+                log.info(f'{old.id} field {k} changed from {_vold} -> {_vnew}')
                 if k in ('created', 'updated', 'size', 'checksum', 'file_id'):
                     file_is_different = True
 
