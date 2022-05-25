@@ -817,8 +817,22 @@ class CachePath(AugmentedPath):
         """ bypass remote to fetch directly based on stored meta """
         meta = self.meta
         if self.is_dir():
-            raise NotImplementedError('not going to fetch all data in a dir at the moment')
-        if meta.file_id is None:
+            msg = 'not going to fetch all data in a dir at the moment'
+            raise NotImplementedError(msg)
+        elif meta is None:
+            # XXX a stochastic error manifests here during a call to spc find
+            # some observations: I have seen it happen on files where there is
+            # a checksum mismatch, it might be the case that spc find trys to
+            # fetch the same file twice because it runs async and if two jobs
+            # run at the same time then there is a race where one writes the
+            # file before there is metadata and the other trys to read the
+            # cache metadata during that window, resulting in a failure
+            # the logs seem to support that this is what is happening
+            # because we get an error here AND also a log fetching the same file
+            # however I'm still not 100% sure that is the cause
+            msg = f'WAT: {self.as_posix()}'
+            raise exc.NoCachedMetadataError(msg)
+        elif meta.file_id is None:
             self.refresh(update_data=True, force=True)
             # the file name could be different so we have to return here
             return
