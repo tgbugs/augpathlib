@@ -1108,7 +1108,7 @@ class SymlinkCache(CachePath):
                            f'{meta.id} != {pathmeta.id}\n'
                            f'{meta.as_pretty()}\n'
                            f'{pathmeta.as_pretty()}')
-                    log.critical(msg)
+                    log.debug(msg)
                     meta_newer = 'Meta newer. Not updating.'
                     pathmeta_newer = 'Other meta newer.'
                     msg = '{}'  # apparently I was out of my mind when I wrote this originally ...
@@ -1117,33 +1117,33 @@ class SymlinkCache(CachePath):
                         return #FIXME
 
                     if meta.updated > pathmeta.updated:
-                        log.info(msg.format(meta_newer))
+                        log.debug(msg.format(meta_newer))
                         return  # this is the right thing to do for a sane filesystem
                     elif meta.updated < pathmeta.updated:
-                        log.info(msg.format(pathmeta_newer))
+                        log.debug(msg.format(pathmeta_newer))
                         # THIS IS EXPLICITLY ALLOWED
                     else:  # they are equal
                         extra = 'Both updated at the same time '
                         if meta.created is not None and pathmeta.created is not None:
                             if meta.created > pathmeta.created:
-                                log.info(msg.format(extra + meta_newer))
+                                log.debug(msg.format(extra + meta_newer))
                                 return
                             elif meta.created < pathmeta.created:
-                                log.info(msg.format(extra + pathmeta_newer))
+                                log.debug(msg.format(extra + pathmeta_newer))
                                 # THIS IS EXPLICITLY ALLOWED
                             else:  # same created
-                                log.info(msg.format('Identical timestamps. Not updating.'))
+                                log.debug(msg.format('Identical timestamps. Not updating.'))
                                 return
                         elif meta.created is not None:
-                            log.info(msg.format(extra + 'Meta has datetime other does not. Not updating.'))
+                            log.debug(msg.format(extra + 'Meta has datetime other does not. Not updating.'))
                             return
                         elif pathmeta.created is not None:
                             msg = msg.format(extra + 'Meta has no datetime other does.')
-                            log.info(msg)
+                            log.debug(msg)
                             raise exc.MetadataIdMismatchError(msg)
                         else:  # both none
-                            log.info(msg.format(extra + ('Identical update time both missing created time. '
-                                                         'Not updating.')))
+                            log.debug(msg.format(extra + ('Identical update time both missing created time. '
+                                                          'Not updating.')))
                             return
                     # equality
                 # id mismatch all cases above should return or raise except for other metadata newer
@@ -1281,7 +1281,7 @@ class PrimaryCache(CachePath):
                 else:
                     _vold, _vnew = vold, vnew
 
-                log.info(f'{old.id} field {k} changed from {_vold} -> {_vnew}')
+                log.debug(f'{old.id} field {k} changed from {_vold} -> {_vnew}')
                 if k in ('created', 'updated', 'size', 'checksum', 'file_id'):
                     file_is_different = True
 
