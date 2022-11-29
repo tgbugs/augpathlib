@@ -51,7 +51,7 @@ class PathMeta:
                  errors=tuple(),
                  **kwargs):
 
-        if not file_id and file_id is not None and file_id is not 0:
+        if not file_id and file_id is not None and file_id != 0:
             raise TypeError('wat')
         if created is not None and not isinstance(created, int) and not isinstance(created, datetime):
             _created = created
