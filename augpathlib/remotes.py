@@ -748,7 +748,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
 
     @property
     def data(self):
-        cmd = ['scp', self.id, '/dev/stdout']
+        cmd = ['ssh', self.host, f'cat {self.rpath!r}']
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         while True:
             data = p.stdout.read(4096)  # TODO hinting
