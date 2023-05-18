@@ -291,11 +291,17 @@ class RemotePath:
     @property
     def _cache(self):
         """ To catch a bad call to set ... """
+        return self._impl__cache()
+
+    def _impl__cache(self):
         if hasattr(self, '_c_cache'):
             return self._c_cache
 
     @_cache.setter
     def _cache(self, cache):
+        return self._impl__cache_setter(cache)
+
+    def _impl__cache_setter(self, cache):
         if not isinstance(cache, caches.CachePath):
             raise TypeError(f'cache is a {type(cache)} not a CachePath!')
         #elif cache.meta is None:  # useful for certain debugging situations
