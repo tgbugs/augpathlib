@@ -43,6 +43,15 @@ class ZipInternalPath(AugmentedPath):  # should be a pure path, but need bind_fl
             if self in path.parents:  # FIXME horrible implementation
                 yield path
 
+    @property
+    def children(self):
+        for path in self._paths:
+            if path == self:
+                continue
+
+            if self == path.parent:  # FIXME horrible implementation
+                yield path
+
     def exists(self):
         return self in self._paths
 
