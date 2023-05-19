@@ -1,6 +1,6 @@
 import zipfile
 from pathlib import PurePath
-from augpathlib import AugmentedPath
+from augpathlib import AugmentedPath, LocalPath
 from augpathlib import exceptions as exc
 from augpathlib.utils import log as _log
 
@@ -11,6 +11,8 @@ class ZipInternalPath(AugmentedPath):  # should be a pure path, but need bind_fl
 
     # _paths is basically the fake file system for the contents of the zip file
     _paths = tuple()  # set in _new, and should be a dict +set+ so new files can be added to a zip
+
+    chunksize = LocalPath.chunksize
 
     @classmethod
     def _new(cls, zip_path):
@@ -80,6 +82,20 @@ class ZipInternalPath(AugmentedPath):  # should be a pure path, but need bind_fl
             self.__fd.close()
         except AttributeError:
             raise BaseException('TODO')  # can't close a closed file?
+
+    @property
+    def data(self):
+        # TODO generic open
+        try:
+            with self.open() as f:
+                while True:
+                    data = f.read(self.chunksize)  # TODO hinting
+                    if not data:
+                        break
+
+                    yield data
+        finally:
+            self.close()
 
 
 ZipInternalPath._bind_flavours()
