@@ -42,6 +42,7 @@ class PathMeta:
                  checksum=None,
                  etag=None,
                  chunksize=None,  # used for properly checksumming?
+                 parent_id=None,  # used to detect file moves
                  id=None,
                  file_id=None,
                  old_id=None,
@@ -77,6 +78,7 @@ class PathMeta:
         self.checksum = checksum
         self.etag = etag
         self.chunksize = chunksize
+        self.parent_id = parent_id
         self.id = id
         self.file_id = file_id
         self.old_id = old_id
@@ -184,6 +186,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
     empty = '#'
     fieldsep = '.'  # must match the file extension splitter for Path ...
     subfieldsep = ';'  # only one level, not going recursive in a filename ...
+    pathsep = '|'  # make sure that there are no path separators in the symlink
     versions = {'meta':('file_id',
                         'size',
                         'created',
@@ -217,8 +220,22 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'user_id',
                         'mode',
                         'errors',),
+                'mdv3':('file_id',
+                        'size',
+                        'created',
+                        'updated',
+                        'checksum',
+                        'etag',
+                        'chunksize',
+                        'parent_id',  # added
+                        'old_id',
+                        'gid',
+                        'user_id',
+                        'mode',
+                        'errors',)
     }
-    write_version = 'mdv2'  # update this on new version
+    write_version = 'mdv3'  # update this on new version
+    order = versions[write_version]
     extras = 'size.hr',
 
     def __init__(self):
@@ -253,6 +270,13 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         if field == 'checksum':
             return value.hex()  # raw hex may contain field separators :/
 
+        if isinstance(value, str) and '/' in value:
+            if self.pathsep in value:
+                msg = f'Y U DO DIS >:| {value!r}'
+                raise ValueError(msg)  # FIXME error type
+
+            value = value.replace('/', self.pathsep)
+
         return _str_encode(field, value)
 
     def decode(self, field, value):
@@ -281,7 +305,10 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             except ValueError:  # FIXME :/ uid vs owner_id etc ...
                 return value
 
-        elif field in ('id', 'mode', 'old_id'):
+        elif field in ('id', 'mode', 'old_id', 'parent_id'):
+            if self.pathsep in value:
+                value = value.replace(self.pathsep, '/')
+
             return value
 
         else:
@@ -346,7 +373,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         kwargs = {field:self.decode(field, value)
                   for field, value in zip(order, suffixes)}
         path = pathlib.PurePosixPath(*parts)
-        kwargs['id'] = str(path.parent)
+        kwargs['id'] = self.decode('id', str(path.parent))
         return self.pathmetaclass(**kwargs)
 
 
@@ -361,6 +388,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
               'checksum',
               'etag',
               'chunksize',
+              'parent_id',
               'id',
               'file_id',
               'old_id',
@@ -492,7 +520,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
             except ValueError:  # FIXME :/ uid vs owner_id etc ...
                 return value.decode()
 
-        elif field in ('id', 'mode', 'old_id'):
+        elif field in ('id', 'mode', 'old_id', 'parent_id'):
             return value.decode()
 
         elif field not in self.fields:
@@ -517,6 +545,7 @@ class _PathMetaAsPretty(_PathMetaConverter):
               'checksum',
               'etag',
               'chunksize',
+              'parent_id',
               'id',
               'file_id',
               'old_id',
@@ -736,6 +765,7 @@ class _EncodeByField:
     def checksum(self, value): return value
     def etag(self, value): return f'{value[0].hex()}-{value[1]}'  # checksum-count  # TODO pack this?
     def chunksize(self, value): return str(value)
+    def parent_id(self, value): return str(value)
     def file_id(self, value): return str(value)
     def gid(self, value): return str(value)
     def user_id(self, value): return str(value)

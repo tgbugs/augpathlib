@@ -684,6 +684,12 @@ class SshRemote(RemotePath, pathlib.PurePath):
         #return self.__class__('/', host=self.host)
 
     @property
+    def parent(self):
+        parent = pathlib.PurePath(self).parent
+        lpc = self.cache.parent
+        return self.__class__(parent, cache=lpc)
+
+    @property
     def id(self):
         return f'{self.host}:{self.rpath}'
         #return self.host + ':' + self.as_posix()  # FIXME relative to anchor?

@@ -1058,6 +1058,10 @@ class LocalPath(EatPath, AugmentedPath):
         return self.sysid + ':' + self.as_posix()
 
     @property
+    def parent_id(self):
+        return self.parent.id
+
+    @property
     def created(self):
         self.meta.created
 
@@ -1138,6 +1142,7 @@ class LocalPath(EatPath, AugmentedPath):
                               checksum=self.checksum() if checksum else None,
                               etag=self.etag() if chunksize else None,
                               chunksize=chunksize,
+                              parent_id=self.parent_id,
                               id=self.id,
                               file_id=st.st_ino,  # pretend inode number is file_id ... oh wait ...
                               user_id=st.st_uid,
