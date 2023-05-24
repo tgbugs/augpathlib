@@ -36,13 +36,14 @@ class PathMeta:
 
 
     def __init__(self,
+                 name=None,  # used to detect renames
                  size=None,
                  created=None,
                  updated=None,
                  checksum=None,
                  etag=None,
                  chunksize=None,  # used for properly checksumming?
-                 parent_id=None,  # used to detect file moves
+                 parent_id=None,  # used to detect reparents
                  id=None,
                  file_id=None,
                  old_id=None,
@@ -72,6 +73,7 @@ class PathMeta:
             # we don't handle it here
             raise TypeError(f'id must be a string! {id!r}')
 
+        self.name = name  # XXX watch out for fields with arbitrary length e.g. dataset title
         self.size = size if size is None else FileSize(size)
         self._created = _created
         self._updated = _updated
@@ -364,15 +366,16 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
             raise exc.CircularSymlinkNameError(msg)
 
-        return self.from_parts(parts)
+        return self.from_parts(parts, name=name)
 
-    def from_parts(self, parts):
+    def from_parts(self, parts, *, name=None):
         data = parts[-1]
         _, version, *suffixes = data.split(self.fieldsep)
         order = self.versions[version]
         kwargs = {field:self.decode(field, value)
                   for field, value in zip(order, suffixes)}
         path = pathlib.PurePosixPath(*parts)
+        kwargs['name'] = name
         kwargs['id'] = self.decode('id', str(path.parent))
         return self.pathmetaclass(**kwargs)
 
@@ -382,7 +385,8 @@ class _PathMetaAsXattrs(_PathMetaConverter):
 
     format_name = 'xattrs'
 
-    fields = ('size',
+    fields = ('name',
+              'size',
               'created',
               'updated',
               'checksum',
@@ -520,7 +524,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
             except ValueError:  # FIXME :/ uid vs owner_id etc ...
                 return value.decode()
 
-        elif field in ('id', 'mode', 'old_id', 'parent_id'):
+        elif field in ('id', 'mode', 'old_id', 'parent_id', 'name'):
             return value.decode()
 
         elif field not in self.fields:
