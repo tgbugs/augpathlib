@@ -1177,7 +1177,8 @@ class SymlinkCache(CachePath):
             # FIXME if an id starts with / then the local name is overwritten due to pathlib logic
             # we need to error if that happens
             #symlink = pathlib.PurePosixPath(self.local.name, pathmeta.as_symlink().as_posix().strip('/'))
-            symlink = pathlib.PurePosixPath(self.local.name) / pathmeta.as_symlink()
+            #symlink = pathlib.PurePosixPath(self.local.name) / pathmeta.as_symlink()
+            symlink = pathmeta.as_symlink()
             self.local.symlink_to(symlink)
 
         else:

@@ -234,6 +234,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'gid',
                         'user_id',
                         'mode',
+                        'rt_name',  # added
                         'errors',)
     }
     write_version = 'mdv3'  # update this on new version
@@ -242,12 +243,15 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
     def __init__(self):
         # register functionality on PathMeta
-        def as_symlink(self, _as_symlink=self.as_symlink):
-            return _as_symlink(self)
+        def as_symlink(self, rt_name=True, _as_symlink=self.as_symlink):
+            return _as_symlink(self, rt_name=rt_name)
 
         @classmethod
-        def from_symlink(cls, symlink_path, _from_symlink=self.from_symlink, **kwargs):
-            return _from_symlink(symlink_path, **kwargs)
+        def from_symlink(cls, symlink_path, match_name=True, _from_symlink=self.from_symlink, **kwargs):
+            return _from_symlink(symlink_path, match_name=match_name, **kwargs)
+
+        as_symlink.__doc__ = self.as_symlink.__doc__
+        from_symlink.__doc__ = self.from_symlink.__doc__
 
         self.pathmetaclass.as_symlink = as_symlink
         self.pathmetaclass.from_symlink = from_symlink
@@ -322,9 +326,14 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         return value
 
-    def as_symlink(self, pathmeta):
+    def as_symlink(self, pathmeta, rt_name=True):
         """ encode meta as a relative path to be appended as a child,
-            not a sibbling """
+            not a sibbling, if rt_name = True it is prepended to the
+            path to form a defensive self referential link loop, the
+            pathmeta object should have a non None value in this case
+
+            rt_name is a kwarg so that it is possible to obtain only the
+            metadata without the name prepended for other use cases """
 
         __ignoreme = object()
 
@@ -340,13 +349,22 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                 return getattr(object, attr)
 
 
-        gen = (self.encode(field, multigetattr(pathmeta, field, None))
+        if rt_name and pathmeta.name is None:
+            msg = f'rt_name=True but pathmeta.name is None for {pathmeta.id}'
+            log.warning(msg)
+
+        gen = ((1 if rt_name and pathmeta.name else self.empty)
+               if field == 'rt_name' else
+               self.encode(field, multigetattr(pathmeta, field, None))
                for field in self.order_all)
 
         id = self.encode('id', pathmeta.id)
 
         path_string = id + f'/.{self.write_version}.' + self.fieldsep.join(gen)
-        return pathlib.PurePosixPath(path_string)
+        symlink_meta = pathlib.PurePosixPath(path_string)
+        symlink = (symlink_meta if not rt_name or pathmeta.name is None else
+                   pathlib.PurePosixPath(pathmeta.name) / symlink_meta)
+        return symlink
 
     def from_symlink(self, symlink_path, match_name=True):
         """ contextual portion to make sure something weird isn't going on
@@ -355,11 +373,19 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         pure_symlink = pathlib.PurePosixPath(raw_symlink)
         name, *parts = pure_symlink.parts
         msg = (symlink_path.name, name)
+        if len(parts) == 1:  # name was not embedded
+            msg = f'match_name=True symlink did not have name prefix for {name}'
+            log.warning(msg)
+            match_name = False
+            parts = name, *parts
+            name = None
+
         if match_name and symlink_path.name != name:
             _l = symlink_path.as_posix().lower()
             l = pathlib.Path(_l).parent
             u = pathlib.Path(_l).parent
             if l.exists() and u.exists():
+                breakpoint()
                 # You've been hit by a case insenstivie file system!
                 # path.exists() -> True but FileNotFoundError woo
                 raise FileNotFoundError(symlink_path)
@@ -375,7 +401,10 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         kwargs = {field:self.decode(field, value)
                   for field, value in zip(order, suffixes)}
         path = pathlib.PurePosixPath(*parts)
-        kwargs['name'] = name
+        if kwargs['rt_name']:
+            kwargs['name'] = name
+
+        kwargs.pop('rt_name')
         kwargs['id'] = self.decode('id', str(path.parent))
         return self.pathmetaclass(**kwargs)
 
