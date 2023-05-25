@@ -1178,7 +1178,7 @@ class SymlinkCache(CachePath):
             # we need to error if that happens
             #symlink = pathlib.PurePosixPath(self.local.name, pathmeta.as_symlink().as_posix().strip('/'))
             #symlink = pathlib.PurePosixPath(self.local.name) / pathmeta.as_symlink()
-            symlink = pathmeta.as_symlink()
+            symlink = pathmeta.as_symlink(local_name=self.local.name)
             self.local.symlink_to(symlink)
 
         else:
@@ -1325,6 +1325,8 @@ class PrimaryCache(CachePath):
                 log.warning('cant fetch remote file there may be untracked local changes for\n{self}')
 
             log.info(f'crumpling to preserve existing metadata\n{self}')
+            # FIXME if someone has overwritten crumple this can and will lead to data loss
+            # because we cannot restore the data on error below
             trashed = self.crumple()
 
         try:

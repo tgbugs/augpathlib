@@ -502,7 +502,7 @@ class AugmentedPath(pathlib.Path):
             and if the paths are on the same device otherwise fail
 
             side note: there doesn't seem to be a standard name for
-            the superset of atomic and non-atomic, this operations
+            the superset of atomic and non-atomic, this operation
             is definitely not non-atomic, it is maybe-atomic, but
             maybe-atomic is too optimistic, thus carefree seems
             appropriately ... disinterested in the exact semantics """
@@ -1104,7 +1104,7 @@ class LocalPath(EatPath, AugmentedPath):
         if not self.exists():
             return PathMeta(
                 id=self.sysid + ':' + self.as_posix(),
-            )
+                name=self.name,)
 
         try:
             st = self.stat()
@@ -1136,7 +1136,8 @@ class LocalPath(EatPath, AugmentedPath):
         # replace with comma since it is conformant to the standard _and_
         # because it simplifies PathMeta as_path
         mode = oct(st.st_mode)
-        self._meta = PathMeta(size=st.st_size,
+        self._meta = PathMeta(name=self.name,
+                              size=st.st_size,
                               created=None,
                               updated=updated,
                               checksum=self.checksum() if checksum else None,

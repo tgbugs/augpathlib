@@ -234,7 +234,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'gid',
                         'user_id',
                         'mode',
-                        'rt_name',  # added
+                        'name',  # added
                         'errors',)
     }
     write_version = 'mdv3'  # update this on new version
@@ -243,8 +243,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
     def __init__(self):
         # register functionality on PathMeta
-        def as_symlink(self, rt_name=True, _as_symlink=self.as_symlink):
-            return _as_symlink(self, rt_name=rt_name)
+        def as_symlink(self, local_name=None, _as_symlink=self.as_symlink):
+            return _as_symlink(self, local_name=local_name)
 
         @classmethod
         def from_symlink(cls, symlink_path, match_name=True, _from_symlink=self.from_symlink, **kwargs):
@@ -280,8 +280,18 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             if self.pathsep in value:
                 msg = f'Y U DO DIS >:| {value!r}'
                 raise ValueError(msg)  # FIXME error type
+            elif field == 'name':
+                msg = f'WHY DO YOU HAVE A / IN A FILE NAME !!!! {value!r}'
+                raise ValueError(msg)  # FIXME error type
 
             value = value.replace('/', self.pathsep)
+
+        if field == 'name' and '.' in value:
+            if self.pathsep in value:
+                msg = f'Y U DO DIS >:| {value!r}'
+                raise ValueError(msg)  # FIXME error type
+
+            value = value.replace('.', self.pathsep)
 
         return _str_encode(field, value)
 
@@ -317,6 +327,12 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
             return value
 
+        elif field in ('name',):
+            if self.pathsep in value:
+                value = value.replace(self.pathsep, '.')
+
+            return value
+
         else:
             try:
                 return int(value)
@@ -326,14 +342,13 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         return value
 
-    def as_symlink(self, pathmeta, rt_name=True):
+    def as_symlink(self, pathmeta, local_name=None):
         """ encode meta as a relative path to be appended as a child,
-            not a sibbling, if rt_name = True it is prepended to the
-            path to form a defensive self referential link loop, the
-            pathmeta object should have a non None value in this case
+            not a sibbling, if local_name is not None it is prepended
+            to form a defensive self referential link loop
 
-            rt_name is a kwarg so that it is possible to obtain only the
-            metadata without the name prepended for other use cases """
+            local_name is a kwarg so that it is possible to obtain only the
+            metadata without the local_name prepended for other use cases """
 
         __ignoreme = object()
 
@@ -348,22 +363,15 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             else:
                 return getattr(object, attr)
 
-
-        if rt_name and pathmeta.name is None:
-            msg = f'rt_name=True but pathmeta.name is None for {pathmeta.id}'
-            log.warning(msg)
-
-        gen = ((1 if rt_name and pathmeta.name else self.empty)
-               if field == 'rt_name' else
-               self.encode(field, multigetattr(pathmeta, field, None))
+        gen = (self.encode(field, multigetattr(pathmeta, field, None))
                for field in self.order_all)
 
         id = self.encode('id', pathmeta.id)
 
         path_string = id + f'/.{self.write_version}.' + self.fieldsep.join(gen)
         symlink_meta = pathlib.PurePosixPath(path_string)
-        symlink = (symlink_meta if not rt_name or pathmeta.name is None else
-                   pathlib.PurePosixPath(pathmeta.name) / symlink_meta)
+        symlink = (symlink_meta if local_name is None else
+                   pathlib.PurePosixPath(local_name) / symlink_meta)
         return symlink
 
     def from_symlink(self, symlink_path, match_name=True):
@@ -371,16 +379,15 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             e.g. that a link got switched to point to another name somehow """
         raw_symlink = symlink_path.readlink(raw=True)
         pure_symlink = pathlib.PurePosixPath(raw_symlink)
-        name, *parts = pure_symlink.parts
-        msg = (symlink_path.name, name)
-        if len(parts) == 1:  # name was not embedded
-            msg = f'match_name=True symlink did not have name prefix for {name}'
+        local_name, *parts = pure_symlink.parts
+        if len(parts) == 1:  # local_name was not prepended
+            msg = f'match_name=True symlink did not have local_name prefix for {local_name}'
             log.warning(msg)
             match_name = False
-            parts = name, *parts
-            name = None
+            parts = local_name, *parts
+            local_name = None
 
-        if match_name and symlink_path.name != name:
+        if match_name and symlink_path.name != local_name:
             _l = symlink_path.as_posix().lower()
             l = pathlib.Path(_l).parent
             u = pathlib.Path(_l).parent
@@ -390,21 +397,18 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                 # path.exists() -> True but FileNotFoundError woo
                 raise FileNotFoundError(symlink_path)
 
+            msg = (symlink_path.name, local_name)
             raise exc.CircularSymlinkNameError(msg)
 
-        return self.from_parts(parts, name=name)
+        return self.from_parts(parts)
 
-    def from_parts(self, parts, *, name=None):
+    def from_parts(self, parts):
         data = parts[-1]
         _, version, *suffixes = data.split(self.fieldsep)
         order = self.versions[version]
         kwargs = {field:self.decode(field, value)
                   for field, value in zip(order, suffixes)}
         path = pathlib.PurePosixPath(*parts)
-        if kwargs['rt_name']:
-            kwargs['name'] = name
-
-        kwargs.pop('rt_name')
         kwargs['id'] = self.decode('id', str(path.parent))
         return self.pathmetaclass(**kwargs)
 

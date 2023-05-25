@@ -364,7 +364,7 @@ class TestPathMeta(unittest.TestCase):
                                         for field in tuple()])  # TODO
 
     def test_symlink_roundtrip(self):
-        meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
+        meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i have spaces.ext')
         path = self.test_path
         path._cache = SymlinkCache(path, meta=meta)
         path.cache.meta = meta
@@ -375,26 +375,30 @@ class TestPathMeta(unittest.TestCase):
 
     def _test_symlink_roundtrip_weird(self):
         path = LocalPathTest(test_base, 'testpath')  # FIXME random needed ...
-        meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
+        meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name=path.name)
         pure_symlink = PurePosixPath(path.name) / meta.as_symlink()
         path.symlink_to(pure_symlink)
         try:
+            assert meta.name == path.name
             cache = SymlinkCache(path)
             new_meta = cache.meta
             msg = '\n'.join([f'{k!r} {v!r} {getattr(new_meta, k)!r}' for k, v in meta.items()])
             assert meta == new_meta, msg
+            assert new_meta.name == path.name
         finally:
             path.unlink()
 
     def test_parts_roundtrip(self):
         pmas = _PathMetaAsSymlink()
         lpm = self.path.meta
-        bpm = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.')
+        bpm = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name=self.path.name)
         bads = []
         for pm in (lpm, bpm):
             symlink = pm.as_symlink()
             log.debug(symlink)
+            assert pm.name == self.path.name
             new_pm = pmas.from_parts(symlink.parts)
+            assert new_pm.name == self.path.name
             #corrected_new_pm = PurePosixPath()
             if new_pm != pm:
                 bads += ['\n'.join([str((getattr(pm, field), getattr(new_pm, field)))
