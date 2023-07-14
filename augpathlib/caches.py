@@ -1068,7 +1068,7 @@ class SymlinkCache(CachePath):
         return SymlinkCache._meta_impl(self)
 
     @classmethod
-    def _meta_impl(cls, self, match_name=True):
+    def _meta_impl(cls, self, match_name=False):
         if hasattr(self, '_meta'):
             return self._meta
 
