@@ -31,7 +31,9 @@ try:
 except ImportError:
     magic_dep = "python-magic; os_name != 'nt'"
 
-tests_require = ['pytest']
+repo_requires = ['gitpython']
+package_requires = ['setuptools', 'packaging', 'requests']
+tests_require = ['pytest'] + repo_requires + package_requires
 setup(
     name='augpathlib',
     version=__version__,
@@ -62,7 +64,6 @@ setup(
     python_requires='>=3.6',
     tests_require=tests_require,
     install_requires=[
-        'gitpython',
         magic_dep,
         'pexpect>=4.7.0',
         #'psutil',
@@ -72,6 +73,8 @@ setup(
         #'Xlib',
     ],
     extras_require={'dev': ['pytest-cov', 'wheel'],
+                    'package': package_requires,
+                    'repo': repo_requires,
                     'test': tests_require},
     entry_points={
         'console_scripts': [

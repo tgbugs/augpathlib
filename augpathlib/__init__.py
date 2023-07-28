@@ -27,6 +27,14 @@ except ImportError as e:
     class RepoPath(RepoHelper):
         pass
 
+try:
+    from augpathlib.package import PackagePath
+except ImportError as e:
+    class PackagePath:
+        def __init__(self, *args, __error=e, **kwargs):
+            raise ImportError(f'{self.__class__.__name__} could not be imported '
+                              'due to a previous ImportError') from __error
+
 
 __all__ = [
     'StatResult',
@@ -38,6 +46,7 @@ __all__ = [
     'AugmentedPath',
     'XattrPath',
     'RepoPath',
+    'PackagePath',
     'XopenPath',
     'LocalPath',
 
@@ -51,4 +60,4 @@ __all__ = [
     'RemotePath',
 ]
 
-__version__ = '0.0.28'
+__version__ = '0.0.29'
