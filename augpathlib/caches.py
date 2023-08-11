@@ -58,7 +58,7 @@ class CachePath(AugmentedPath):
 
         # a nice side effect of weighing anchor here is that it
         # enforces order of operations for setup then init etc.
-        if hasattr(cls, '_anchor'):
+        if '_anchor' in cls.__dict__:
             cls.weighAnchor()
 
     @classmethod
@@ -66,19 +66,19 @@ class CachePath(AugmentedPath):
         # return a value to indicate that there was an anchor since
         # we no longer error when already underway
         acls = cls._abstract_class()
-        if hasattr(acls, '_anchor'):
+        if '_anchor' in acls.__dict__:
+            # can't use hasattr because it traverses the mro
+            # and we only care about the immediate class
             return delattr(acls, '_anchor')
 
     def anchorClassHere(self, remote_init=True):
         """ Use this to initialize the class level anchor from an instance. """
 
-        # FIXME WARNING you can shoot yourself in the foot with this if
-        # there is another anchor further up the tree from this one
         # FIXME further, this means that there has to have been a way
         # to construct a live CachePath by sideloading the remote id
         # which is OK for the path where local/remote binding has already
         # been completed
-        if not hasattr(self.__class__, '_anchor'):
+        if '_anchor' not in self.__class__.__dict__:
             self.__class__._abstract_class()._anchor = self
             self.local_data_dir_init()  # call every time for insurance
             self._remote_class.anchorToCache(self, init=remote_init)
