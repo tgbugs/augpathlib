@@ -54,6 +54,8 @@ else:
                 (getattr(exception, 'errno', None) in _IGNORED_ERROS))
 
 
+need_flavour = sys.version_info < (3, 12)
+
 if sys.version_info >= (3, 7):
     pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
     _IGNORED_WINERRORS = pathlib._IGNORED_WINERRORS
@@ -333,6 +335,9 @@ class AugmentedPath(pathlib.Path):
 
     @classmethod
     def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+        if not need_flavour:
+            return
+
         pos, win = cls._get_flavours()
 
         if pos is None:
@@ -364,7 +369,9 @@ class AugmentedPath(pathlib.Path):
     def _abstract_class(cls):
         return cls.__abstractpath
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 12):
+        pass
+    elif sys.version_info >= (3, 10):
         def __new__(cls, *args, **kwargs):
             if cls is cls.__abstractpath:
                 cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
@@ -811,10 +818,10 @@ def splitroot(self, part, sep='\\'):
         part = part.lstrip(sep)
     return prefix + drv, root, part
 
-
-pathlib._WindowsFlavour.drive_letters.update(AugmentedPathWindows._registry_drives)
-pathlib._WindowsFlavour.splitroot = splitroot
-pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
+if need_flavour:
+    pathlib._WindowsFlavour.drive_letters.update(AugmentedPathWindows._registry_drives)
+    pathlib._WindowsFlavour.splitroot = splitroot
+    pathlib._windows_flavour.splitroot = pathlib._WindowsFlavour().splitroot
 
 AugmentedPath._bind_flavours()
 
