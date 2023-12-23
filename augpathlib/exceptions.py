@@ -143,3 +143,7 @@ class CacheExistsError(AugPathlibError):
 class FileHasNotChangedError(AugPathlibError):
     """ signal cases where a file has not changed
         and thus that no action will be taken """
+
+
+class NotACacheClassError(AugPathlibError):
+    """ yet another reminder to never reuse builtin error types for anything """

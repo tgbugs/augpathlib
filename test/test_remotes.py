@@ -49,6 +49,7 @@ class TestSshRemote(TestPathHelper, unittest.TestCase):
     def test_parent(self):
         r = self.this_file_darkly
         l = self.Path(r.local)
+        # FIXME utterly broken on 3.12
         assert r.parent.local == r.local.parent == l.parent
         assert l.parent.remote == l.remote.parent == r.parent
 

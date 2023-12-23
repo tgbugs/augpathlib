@@ -9,7 +9,7 @@ from augpathlib.utils import LOCAL_DATA_DIR, SPARSE_MARKER
 from augpathlib import remotes
 
 
-class CachePath(AugmentedPath):
+class _CachePath(AugmentedPath):
     # CachePaths this needs to be a real path so that it can navigate the local path sturcture
     # FIXME Not sure I believe that, given the tradeoff
     """ Local data about remote objects.
@@ -121,23 +121,6 @@ class CachePath(AugmentedPath):
                 raise TypeError('Not entirely sure what to do in this case ...')
 
         return self
-
-    def __init__(self, *args, meta=None, remote=None, **kwargs):
-        if remote:
-            self._remote = remote
-            self._meta_setter(remote.meta)
-        elif meta:
-            self._meta_updater(meta)
-        else:
-            path = args[0]
-            if self.meta is None:
-                raise exc.NoCachedMetadataError(self.local)
-
-            elif isinstance(path, LocalPath):
-                # XXX FIXME probably remove this
-                path._cache = self
-
-        super().__init__()
 
     @property
     def anchor(self):
@@ -251,13 +234,17 @@ class CachePath(AugmentedPath):
         # they are just a name and an id ... the id of their parent
         # root needs to match the id of the cache ... which it usually
         # does by construction
-        parent = self.parent if self.parent.meta is not None else self  # FIXME should be in def parent ???
+        try:
+            parent = self.parent if self.parent.meta is not None else self  # FIXME should be in def parent ???
+        except exc.NoCachedMetadataError as e:
+            parent = self
+
         if isinstance(key, remotes.RemotePath):
             # FIXME not just names but relative paths???
             remote = key
             try:
                 child = self._make_child(
-                    remote._parts_relative_to(self.remote, parent),
+                    remote._parts_relative_to(self.remote, cache_parent=parent),
                     remote, update_meta=update_meta)
             except AttributeError as e:
                 raise exc.AugPathlibError('aaaaaaaaaaaaaaaaaaaaaa') from e
@@ -287,7 +274,38 @@ class CachePath(AugmentedPath):
         #out._meta_setter(cache.meta)
         return out
 
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 12):
+        def _make_child(self, args, remote, update_meta=True):
+            # FIXME this was removed in 3.12 ... but we need it to bridge the gap?
+            def join_parsed_parts(self, drv, root, parts, drv2, root2, parts2):
+                """
+                Join the two paths represented by the respective
+                (drive, root, parts) tuples.  Return a new (drive, root, parts) tuple.
+                """
+                if root2:
+                    if not drv2 and drv:
+                        return drv, root2, [drv + root2] + parts2[1:]
+                elif drv2:
+                    if drv2 == drv or self.casefold(drv2) == self.casefold(drv):
+                        # Same drive => second path is relative to the first
+                        return drv, root, parts + parts2[1:]
+                else:
+                    # Second path is non-anchored (common case)
+                    return drv, root, parts + parts2
+                return drv2, root2, parts2
+
+            drv, root, parts = self._parse_path(args)
+            drv, root, parts = join_parsed_parts(self,
+                self._drv, self._root, self._tail, drv, root, parts)
+            child = self._from_parsed_parts(drv, root, parts)  # short circuits
+            if isinstance(remote, remotes.RemotePath):
+                remote._cache_setter(child, update_meta=update_meta)
+            else:
+                raise ValueError('should not happen')
+
+            return child
+
+    elif sys.version_info >= (3, 10):
         def _make_child(self, args, remote, update_meta=True):
             drv, root, parts = self._parse_args(args)
             drv, root, parts = self._flavour.join_parsed_parts(
@@ -516,8 +534,11 @@ class CachePath(AugmentedPath):
             if sparse and not self._sparse_include():
                 return
 
-            if not self.parent.exists():
-                self.parent.mkdir(parents=parents)
+            if not self.local.parent.exists():
+                # XXX use local here to avoid issues during
+                # construction where a non-existent parent will have
+                # no cached metadata and thus would normally fail to construct
+                self.local.parent.mkdir(parents=parents)
 
             toucha_da_filey = (fetch_data and
                                self.meta.size is not None and
@@ -887,16 +908,16 @@ class CachePath(AugmentedPath):
             log.warning(f'trying to move a file onto itself {self.absolute()}')
             return target
 
-        common = self.commonpath(target).absolute()
+        common = self.local.commonpath(target).absolute()
         target_parent = target.parent.absolute()
-        parent = self.parent.absolute()
+        parent = self.local.parent.absolute()
 
         assert target.name != self.name or target_parent != parent
 
         if target_parent != parent:
             _id = remote.id if remote else meta.id
             log.warning('A parent of current file has changed location!\n'
-                        f'{common}\n{self.relative_to(common)}\n'
+                        f'{common}\n{self.local.relative_to(common)}\n'
                         f'{target.relative_to(common)}\n{_id}')
 
 
@@ -970,10 +991,34 @@ class CachePath(AugmentedPath):
         raise NotImplementedError('implement in subclass')
 
 
+class CachePath(_CachePath):
+    def __init__(self, *args, meta=None, remote=None, **kwargs):
+        if sys.version_info >= (3, 12):
+            super().__init__(*args)
+            self._ikwargs = {'meta': meta, 'remote': remote, **kwargs}
+
+        if remote:
+            self._remote = remote
+            self._meta_setter(remote.meta)
+        elif meta:
+            self._meta_updater(meta)
+        else:
+            path = args[0]
+            if self.meta is None:
+                raise exc.NoCachedMetadataError(self.local)
+
+            elif isinstance(path, LocalPath):
+                # XXX FIXME probably remove this
+                path._cache = self
+
+        if sys.version_info < (3, 12):
+            super().__init__()
+
+
 CachePath._bind_flavours()
 
 
-class ReflectiveCache(CachePath):
+class ReflectiveCache(_CachePath):
     """ Oh, it's me. """
 
     @property
@@ -984,7 +1029,7 @@ class ReflectiveCache(CachePath):
 ReflectiveCache._bind_flavours()
 
 
-class EatCache(EatPath, CachePath):
+class EatCache(EatPath, _CachePath):
 
     xattr_prefix = None
 
@@ -1022,10 +1067,13 @@ class EatCache(EatPath, CachePath):
 EatCache._bind_flavours()
 
 
-class SqliteCache(CachePath):
+class SqliteCache(_CachePath):
     """ a persistent store to back up the xattrs if they get wiped """
 
     def __init__(self, *args, meta=None, **kwargs):
+        if sys.version_info >= (3, 12):
+            super().__init__(*args)
+
         if meta is not None:
             self.meta = meta
 
@@ -1045,9 +1093,12 @@ class SqliteCache(CachePath):
 SqliteCache._bind_flavours()
 
 
-class SymlinkCache(CachePath):
+class SymlinkCache(_CachePath):
 
     def __init__(self, *args, meta=None, **kwargs):
+        if sys.version_info >= (3, 12):
+            super().__init__(*args)
+
         if meta is not None:
             self.meta = meta
 

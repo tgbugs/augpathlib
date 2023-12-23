@@ -333,24 +333,26 @@ class AugmentedPath(pathlib.Path):
     count = 0
     _debug = False  # sigh
 
-    @classmethod
-    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
-        if not need_flavour:
-            return
+    if need_flavour:
+        @classmethod
+        def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+            pos, win = cls._get_flavours()
 
-        pos, win = cls._get_flavours()
+            if pos is None:
+                pos = type(f'{cls.__name__}Posix',
+                        (*pos_helpers, cls, AugmentedPathPosix), {})
 
-        if pos is None:
-            pos = type(f'{cls.__name__}Posix',
-                       (*pos_helpers, cls, AugmentedPathPosix), {})
+            if win is None:
+                win = type(f'{cls.__name__}Windows',
+                        (*win_helpers, cls, AugmentedPathWindows), {})
 
-        if win is None:
-            win = type(f'{cls.__name__}Windows',
-                       (*win_helpers, cls, AugmentedPathWindows), {})
-
-        cls.__abstractpath = cls
-        cls.__posixpath = pos
-        cls.__windowspath = win
+            cls.__abstractpath = cls
+            cls.__posixpath = pos
+            cls.__windowspath = win
+    else:
+        @classmethod
+        def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+            pass
 
     @classmethod
     def _get_flavours(cls):
@@ -365,12 +367,29 @@ class AugmentedPath(pathlib.Path):
 
         return pos, win
 
-    @classmethod
-    def _abstract_class(cls):
-        return cls.__abstractpath
+    if sys.version_info >= (3, 12):
+        @classmethod
+        def _abstract_class(cls):
+            # FIXME not sure if this will work the way we want
+            return cls
+    else:
+        @classmethod
+        def _abstract_class(cls):
+            return cls.__abstractpath
 
     if sys.version_info >= (3, 12):
+        # FIXME calling __new__ by itself is insufficient
+        # to set the state of the cache class due to the
+        # precise ordering of events that we exploit in < 3.12
+        # this means that cache classes that inherit from this
+        # don't have their state set correctly after super().__new__
+        # finishes and they go on to call methods that expect the
+        # cache state to have been resolve ... I think the right
+        # way tot fix this is to implement with_segments and use
+        # that to initialize the class in two steps and resolve the
+        # cache in between, or something like that
         pass
+
     elif sys.version_info >= (3, 10):
         def __new__(cls, *args, **kwargs):
             if cls is cls.__abstractpath:
@@ -581,7 +600,13 @@ class AugmentedPath(pathlib.Path):
                     # for now we are going to hard fail if this case occures
                     raise OSError("Cannot call rmtree on a symbolic link")
 
-                for path in self.iterdir():
+                if hasattr(self, 'local'):
+                    # cache case
+                    lp = self.local
+                else:
+                    lp = self
+
+                for path in lp.iterdir():
                     if path.is_symlink():
                         # mimic shutil behavior and don't accidentally
                         # recurse through symlinks (keyword being curse)
@@ -818,6 +843,7 @@ def splitroot(self, part, sep='\\'):
         part = part.lstrip(sep)
     return prefix + drv, root, part
 
+
 if need_flavour:
     pathlib._WindowsFlavour.drive_letters.update(AugmentedPathWindows._registry_drives)
     pathlib._WindowsFlavour.splitroot = splitroot
@@ -830,9 +856,26 @@ class EatPath(EatHelper, AugmentedPath):
 
     # NOTE _sparse_key is set on each helper
 
+    if sys.version_info >= (3, 12):
+        def __new__(cls, *args, **kwargs):
+            helper = ADSHelper if os.name == 'nt' else XattrHelper
+            if helper not in cls.mro():
+                # FIXME do we need to cache these so the types match?
+                cls = type(f'{cls.__name__}_{helper.__name__}', (cls, helper), {})
+
+            #breakpoint()
+            return super().__new__(cls, *args, **kwargs)
+
     def _sparse_root(self):
-        parent = self.parent
-        if self != parent:
+        if hasattr(self, 'local'):
+            # cache case
+            l = self.local
+            parent = l.parent
+        else:
+            parent = self.parent
+            l = self
+
+        if l != parent:
             try:
                 return self.getxattr(self._sparse_key) == b'1'
             except exc.NoStreamError:

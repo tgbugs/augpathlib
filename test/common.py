@@ -103,7 +103,7 @@ class RemotePathTest(RemotePath):
         if isinstance(thing_with_id, int):
             thing_with_id = str(thing_with_id)
 
-        super().__init__(thing_with_id, cache)
+        super().__init__(thing_with_id, cache=cache)
         self._errors = []
 
     def is_dir(self):
@@ -149,7 +149,7 @@ RemotePathTest._cache_class = CachePathTest
 
 # set up testing anchor (must come after the hierarchy)
 CachePathTest.anchor = test_path
-# note: the this creates a symlink which the rests of the tests expect
+# note: the this creates a symlink which the rest of the tests expect
 if test_path.exists():
     test_path.rmtree(onerror=onerror)
 CachePathTest.anchor = CachePathTest(test_path, meta=PathMeta(id='0'))

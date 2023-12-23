@@ -82,8 +82,11 @@ class RemotePath:
                     cls.init(cache_anchor.id)
 
             if hasattr(cls, 'root') and cls.root != cache_anchor.id:
-                raise ValueError('root and anchor ids do not match! '
-                                 f'{cls.root} != {cache_anchor.id}')
+                if hasattr(cls, '_remote_root') and cls._remote_root == cache_anchor.id:
+                    pass
+                else:
+                    raise ValueError('root and anchor ids do not match! '
+                                     f'{cls.root} != {cache_anchor.id}')
 
             cls._cache_anchor = cache_anchor
             return cls._cache_anchor
@@ -223,7 +226,15 @@ class RemotePath:
         # we're trying not to throw dicts around willy nilly here ...
         return self.cache.bootstrap(self.meta, recursive=recursive, only=only, skip=skip, sparse=sparse)
 
-    def __init__(self, thing_with_id, cache=None):
+    def __init__(self, thing_with_id, *args, cache=None):
+        if args:
+            if sys.version_info < (3, 12):
+                msg = f'{self.__class__.__name__} was passed args: {args}'
+                raise TypeError(msg)
+            else:
+                # as of 3.12 division stores both paths now it seems
+                super().__init__(thing_with_id, *args)
+
         if isinstance(thing_with_id, str):
             id = thing_with_id
         elif isinstance(thing_with_id, PathMeta):
@@ -303,7 +314,8 @@ class RemotePath:
 
     def _impl__cache_setter(self, cache):
         if not isinstance(cache, caches.CachePath):
-            raise TypeError(f'cache is a {type(cache)} not a CachePath!')
+            msg = f'cache is a {type(cache)} not a CachePath!'
+            raise exc.NotACacheClassError(msg)
         #elif cache.meta is None:  # useful for certain debugging situations
             #raise ValueError(f'cache has no meta {cache}')
 
@@ -498,7 +510,7 @@ class RemotePath:
             else:
                 cache_parent = None
 
-            self._parts = tuple(self._parts_relative_to(self.anchor, cache_parent))
+            self._parts = tuple(self._parts_relative_to(self.anchor, cache_parent=cache_parent))
 
         return self._parts
 
@@ -512,7 +524,11 @@ class RemotePath:
         parent = self.parent
         while parent:
             yield parent
-            parent = parent.parent
+            next_parent = parent.parent
+            if next_parent != parent:
+                parent = next_parent
+            else:
+                parent = None
 
     @property
     def children(self):
@@ -543,7 +559,7 @@ class RemotePath:
         raise NotImplementedError
 
     def __eq__(self, other):
-        return self.id == other.id
+        return other and self.id == other.id
 
     def __ne__(self, other):
         return not self == other
@@ -575,21 +591,26 @@ class SshRemote(RemotePath, pathlib.PurePath):
         newcls._bind_flavours()
         return newcls
 
-    @classmethod
-    def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
-        pos, win = cls._get_flavours()
+    if sys.version_info < (3, 12):
+        @classmethod
+        def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+            pos, win = cls._get_flavours()
 
-        if pos is None:
-            pos = type(f'{cls.__name__}Posix',
-                       (*pos_helpers, cls, pathlib.PurePosixPath), {})
+            if pos is None:
+                pos = type(f'{cls.__name__}Posix',
+                        (*pos_helpers, cls, pathlib.PurePosixPath), {})
 
-        if win is None:
-            win = type(f'{cls.__name__}Windows',
-                       (*win_helpers, cls, pathlib.PureWindowsPath), {})
+            if win is None:
+                win = type(f'{cls.__name__}Windows',
+                        (*win_helpers, cls, pathlib.PureWindowsPath), {})
 
-        cls.__abstractpath = cls
-        cls.__posixpath = pos
-        cls.__windowspath = win
+            cls.__abstractpath = cls
+            cls.__posixpath = pos
+            cls.__windowspath = win
+    else:
+        @classmethod
+        def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+            pass
 
     @classmethod
     def _get_flavours(cls):
@@ -616,8 +637,16 @@ class SshRemote(RemotePath, pathlib.PurePath):
 
         _self = pathlib.PurePath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
         _self.remote_platform = _self._remote_platform
+
+        if sys.version_info >= (3, 12):
+            # FIXME HACK workaround reordering of __new__ and __init__ in 3.12
+            pathlib.PurePath.__init__(_self, *args)
+            if _self._raw_paths and _self._raw_paths[-1].startswith('/'):
+                # XXX ENORMOUS HACK to match rerooting behavior from < 3.12 FIXME need better solution
+                _self.root = _self.root.split('/', 1)[0] + '/'
+
         return _self
-    
+
         # TODO this isn't quite working yet due to bootstrapping issues as usual
         # it also isn't working because we want access to all paths in many cases
         # the root remains and the calculation against anchor remains for any
@@ -636,13 +665,18 @@ class SshRemote(RemotePath, pathlib.PurePath):
     def init(cls, host_path):
         """ should only be invoked after _new has bound local and cache classes """
         if not hasattr(cls, '_anchor'):
-            cls.root = host_path  # I think this is right ...
             host, path = host_path.split(':', 1)
+
+            cls.root = host_path
 
             if not hasattr(cls, '_flavour'):
                 cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
 
-            cls._anchor = pathlib.PurePath.__new__(cls, path)
+            if sys.version_info >= (3, 12):  # FIXME HACK
+                cls._anchor = pathlib.PurePath.__new__(cls, path)
+                pathlib.PurePath.__init__(cls._anchor)  # don't include path for anchor it will dupe
+            else:
+                cls._anchor = pathlib.PurePath.__new__(cls, path)
 
             session = pxssh.pxssh(options=dict(IdentityAgent=os.environ.get('SSH_AUTH_SOCK')))
             session.login(host, ssh_config=LocalPath('~/.ssh/config').expanduser().as_posix())
@@ -668,11 +702,11 @@ class SshRemote(RemotePath, pathlib.PurePath):
         cls._bind_sysid()
         return anchor
 
-    def __init__(self, thing_with_id, cache=None):
+    def __init__(self, thing_with_id, *args, cache=None):
         if isinstance(thing_with_id, pathlib.PurePath):
             thing_with_id = thing_with_id.as_posix()
 
-        super().__init__(thing_with_id, cache=cache)
+        super().__init__(thing_with_id, *args, cache=cache)
 
     @property
     def anchor(self):
@@ -686,7 +720,19 @@ class SshRemote(RemotePath, pathlib.PurePath):
     @property
     def parent(self):
         parent = pathlib.PurePath(self).parent
-        lpc = self.cache.parent
+        if parent.as_posix() == self.as_posix():
+            # as_posix needed for < 3.12
+            return self
+
+        c = self.cache
+        if c is None:  # the local cache has not been created yet
+            lpc = None
+        else:
+            try:
+                lpc = self.cache.parent
+            except exc.NoCachedMetadataError as e:
+                lpc = None
+
         return self.__class__(parent, cache=lpc)
 
     @property
@@ -700,24 +746,60 @@ class SshRemote(RemotePath, pathlib.PurePath):
         raise NotImplementedError
 
     @property
-    def rpath(self):
+    def rpath(self):  # XXX FIXME utterly broken in 3.12
         # FIXME relative paths when the anchor is set differently
         # the anchor will have to be stored as well since there coulde
         # be many possible anchors per host, thus, if an anchor relative
         # identifier is supplied then we need to construct the full path
 
         # conveniently in this case if self is a fully rooted path then
-        # it will overwrite the anchor path
+        # it will overwrite the anchor path XXX this is no longer true in 3.12 because the root persists
+
         # TODO make sure that the common path is the anchor ...
-        return (self.anchor / self).as_posix()
 
-    def _parts_relative_to(self, remote, cache_parent=None):
-        if remote == self.anchor:
-            # have to build from self.anchor._parts because it is the only
-            # place the keeps the original parts
-            remote = pathlib.PurePath(*self.anchor._parts)
+        if sys.version_info < (3, 12):
+            pass
+        else:
+            # FIXME HACK
+            if self.root == self.anchor.root and self._raw_paths == self.anchor._raw_paths:
+                # XXX already at the anchor
+                host, path = self.root.split(':', 1)
+                return path
 
-        return self.relative_to(remote).parts
+        host_path = (self.anchor / self).as_posix()
+        if sys.version_info < (3, 12):
+            # < 3.12 uses _parts which includes '/' explicitly
+            return host_path
+        else:
+            host, path = host_path.split(':', 1)
+            return path
+
+    if sys.version_info < (3, 12):
+        def _parts_relative_to(self, remote, *args, cache_parent=None):
+            if args:
+                raise TypeError(f'args were provided {args}')
+
+            if remote == self.anchor:
+                # have to build from self.anchor._parts because it is the only
+                # place the keeps the original parts
+                remote = pathlib.PurePath(*self.anchor._parts)
+
+            return self.relative_to(remote).parts
+    else:
+        def _parts_relative_to(self, remote, *args, cache_parent=None):
+            if args:
+                raise TypeError(f'args were provided {args}')
+
+            # relative_to calls self.parent in 3.12 which causes all
+            # sort of problems, so workaround using rpath
+            try:
+                return (pathlib.PurePath(self.rpath)
+                        .relative_to(pathlib.PurePath(self.rpath))
+                        .parts)
+                #return self.relative_to(remote, walk_up=True).parts
+            except Exception as e:
+                breakpoint()
+                raise e
 
     def refresh(self):
         # TODO probably not the best idea ...
