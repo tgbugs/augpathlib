@@ -1,3 +1,4 @@
+import sys
 import zipfile
 from pathlib import PurePath
 from augpathlib import AugmentedPath, LocalPath
@@ -30,6 +31,11 @@ class ZipInternalPath(AugmentedPath):  # should be a pure path, but need bind_fl
             args = info.filename,
 
         self = super().__new__(cls, *args, **kwargs)
+
+        if sys.version_info >= (3, 12):
+            # 3.12 hash requires _raw_paths
+            super().__init__(self, *args)
+
         if self in cls._paths:
             return cls._paths[self]  # keep only a single copy
 
@@ -37,6 +43,15 @@ class ZipInternalPath(AugmentedPath):  # should be a pure path, but need bind_fl
             self._zi = info
 
         return self
+
+    if sys.version_info >= (3, 12):
+        def __init__(self, *args, **kwargs):
+            if not args and hasattr(self, '_zi'):
+                # 3.12 ensure that _raw_paths is initialized correctly
+                # on the instances that go in the cache
+                args = self._zi.filename,
+
+            super().__init__(*args)
 
     @property
     def rchildren(self):
