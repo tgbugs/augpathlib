@@ -576,7 +576,7 @@ class _CachePath(AugmentedPath):
         # related functions and methods which is not happening now
         cypher_name = self.meta.checksum_cypher
         if cypher_name is None:
-            cypher = self.cypher
+            return self.cypher
         else:
             if cypher_name not in cypher_lookup:
                 raise NotImplementedError(f'unknown cypher {cypher_name}')

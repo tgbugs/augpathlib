@@ -1192,10 +1192,10 @@ class LocalPath(EatPath, AugmentedPath):
         mode = oct(st.st_mode)
         cypher = (  # FIXME hack around terrible design
             self._cache_class.cypher
-            if self._cache_class else
-            default_cypher)
-        checksum_cypher = cypher_algo[cypher]
+            if self._cache_class and self._cache_class.cypher
+            else default_cypher)
         checksum = self.checksum(cypher) if checksum else None
+        checksum_cypher = cypher_algo[cypher] if checksum else None
         self._meta = PathMeta(name=self.name,
                               size=st.st_size,
                               created=None,
