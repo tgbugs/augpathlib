@@ -4,7 +4,8 @@ import warnings
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib.core import AugmentedPath, EatPath
-from augpathlib.utils import log, default_cypher, fs_safe_id
+from augpathlib.utils import log, fs_safe_id
+from augpathlib.utils import default_cypher, cypher_lookup
 from augpathlib.utils import LOCAL_DATA_DIR, SPARSE_MARKER
 from augpathlib import remotes
 
@@ -569,6 +570,18 @@ class _CachePath(AugmentedPath):
     def _sparse_include(self):
         raise NotImplementedError('implement in subclass')
 
+    def _instance_cypher(self):
+        # FIXME sigh this is NOT a good solution at all but fixing it
+        # requires a complete rework of all checksum and cypher
+        # related functions and methods which is not happening now
+        cypher_name = self.meta.checksum_cypher
+        if cypher_name is None:
+            cypher = self.cypher
+        else:
+            if cypher_name not in cypher_lookup:
+                raise NotImplementedError(f'unknown cypher {cypher_name}')
+            return cypher_lookup[cypher_name]
+
     def validate_file(self):
         meta = self.meta
         if meta.etag:
@@ -581,11 +594,15 @@ class _CachePath(AugmentedPath):
                 log.critical(msg)
 
         elif meta.checksum:
-            lc = self.local.meta.checksum
+            lc = self.local.checksum(cypher=self._instance_cypher())
+            #lc = self.local.meta.checksum
             cc = self.meta.checksum
             if lc != cc:
                 msg = f'Checksums do not match!\n(!=\n{lc.hex()}\n{cc.hex()}\n)'
                 log.critical(msg)  # haven't figured out how to comput the bf checksums yet
+                nmeta = {k: v for k, v in meta.items()}
+                nmeta['errors'] += ('checksum-mismatch',)
+                self.meta = meta.__class__(**nmeta)
                 #raise exc.ChecksumError(msg)
         elif meta.size is not None:
             log.warning(f'No checksum! Your data is at risk!\n'
@@ -879,13 +896,16 @@ class _CachePath(AugmentedPath):
                        f'from previous fetch? {existing_cache_cache}')
                 raise ValueError(msg)
 
-            _lc = self.local.checksum()
+            _lc = self.local.checksum(cypher=self._instance_cypher())
             if meta.checksum is not None and _lc != meta.checksum:
                 # FIXME these checks need to be happning inside of
                 # the local.data setter since otherwise this is overkill
                 #breakpoint()
                 msg = f'{_lc.hex()!r} != {meta.checksum.hex()!r} for {self!r}'
                 log.critical(msg)
+                nmeta = {k: v for k, v in meta.items()}
+                nmeta['errors'] += ('checksum-mismatch',)
+                self._meta_setter(meta.__class__(**nmeta))
                 #raise BaseException()
 
         if size_not_ok:

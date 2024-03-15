@@ -206,7 +206,10 @@ class RemotePath:
         # everything ...
 
         if hasattr(cls, '_cache_anchor'):
-            delattr(cls, '_cache_anchor')
+            if '_cache_anchor' in cls.__dict__:
+                delattr(cls, '_cache_anchor')
+            else:
+                breakpoint()  # should not happen with these ???
 
     @classmethod
     def setup(cls, local_class, cache_class):

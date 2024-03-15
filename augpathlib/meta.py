@@ -41,6 +41,7 @@ class PathMeta:
                  created=None,
                  updated=None,
                  checksum=None,
+                 checksum_cypher=None,  # have to store this as data sadly
                  etag=None,
                  chunksize=None,  # used for properly checksumming?
                  parent_id=None,  # used to detect reparents
@@ -78,6 +79,7 @@ class PathMeta:
         self._created = _created
         self._updated = _updated
         self.checksum = checksum
+        self.checksum_cypher = checksum_cypher
         self.etag = etag
         self.chunksize = chunksize
         self.parent_id = parent_id
@@ -235,9 +237,24 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'user_id',
                         'mode',
                         'name',  # added
+                        'errors',),
+                'mdv4':('file_id',
+                        'size',
+                        'created',
+                        'updated',
+                        'checksum',
+                        'checksum_cypher',  # added
+                        'etag',
+                        'chunksize',
+                        'parent_id',
+                        'old_id',
+                        'gid',
+                        'user_id',
+                        'mode',
+                        'name',
                         'errors',)
     }
-    write_version = 'mdv3'  # update this on new version
+    write_version = 'mdv4'  # update this on new version
     order = versions[write_version]
     extras = 'size.hr',
 
@@ -309,6 +326,9 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         elif field == 'checksum':  # FIXME checksum encoding ...
             #return value.encode()
             return bytes.fromhex(value)
+
+        elif field == 'checksum_cypher':
+            return value
 
         elif field == 'etag':
             checksum, strcount = value.rsplit('-', 1)
@@ -423,6 +443,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
               'created',
               'updated',
               'checksum',
+              'checksum_cypher',
               'etag',
               'chunksize',
               'parent_id',
@@ -540,6 +561,9 @@ class _PathMetaAsXattrs(_PathMetaConverter):
         elif field == 'checksum':
             return value
 
+        elif field == 'checksum_cypher':
+            return value.decode()
+
         elif field == 'etag':
             # struct pack this sucker so the count can fit as well?
             value = value.decode()  # FIXME
@@ -580,6 +604,7 @@ class _PathMetaAsPretty(_PathMetaConverter):
               'created',
               'updated',
               'checksum',
+              'checksum_cypher',
               'etag',
               'chunksize',
               'parent_id',

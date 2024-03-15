@@ -28,6 +28,8 @@ LOCAL_DATA_DIR = '.operations'
 SPARSE_MARKER = '.sparse'
 AUG_XATTR_PREFIX = 'augpathlib'
 default_cypher = hashlib.blake2b
+cypher_lookup = {a: getattr(hashlib, a) for a in hashlib.algorithms_guaranteed}
+cypher_algo = {v: k for k, v in cypher_lookup.items()}
 cypher_command_lookup = {hashlib.sha256:'sha256sum',
                          hashlib.blake2b:'b2sum'}
 red = '\x1b[31m{}\x1b[0m'  # use as red.format(value)

@@ -25,7 +25,8 @@ import augpathlib as aug
 from augpathlib import swap
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
-from augpathlib.utils import log, default_cypher, StatResult, etag
+from augpathlib.utils import log, StatResult, etag
+from augpathlib.utils import default_cypher, cypher_algo
 from augpathlib.utils import _bind_sysid_, AUG_XATTR_PREFIX
 
 SPARSE_KEY = (AUG_XATTR_PREFIX + '.sparse')
@@ -725,9 +726,12 @@ class AugmentedPath(pathlib.Path):
     def checksum(self, cypher=default_cypher, extra_cyphers=tuple()):
         """ checksum() always recomputes from the data
             meta.checksum is static for cache and remote IF it exists """
+        # FIXME the cypher cannot be determined independent of a call to checksum
 
         if self.is_file():
-            if ((hasattr(self, '_cache_class') and
+            if cypher != default_cypher:
+                pass  # FIXME this is SO DUMB (see commit message)
+            elif ((hasattr(self, '_cache_class') and
                  hasattr(self._cache_class, 'cypher') and
                  self._cache_class.cypher != cypher)):  # FIXME this could be static ...
                 cypher = self._cache_class.cypher
@@ -1186,11 +1190,18 @@ class LocalPath(EatPath, AugmentedPath):
         # replace with comma since it is conformant to the standard _and_
         # because it simplifies PathMeta as_path
         mode = oct(st.st_mode)
+        cypher = (  # FIXME hack around terrible design
+            self._cache_class.cypher
+            if self._cache_class else
+            default_cypher)
+        checksum_cypher = cypher_algo[cypher]
+        checksum = self.checksum(cypher) if checksum else None
         self._meta = PathMeta(name=self.name,
                               size=st.st_size,
                               created=None,
                               updated=updated,
-                              checksum=self.checksum() if checksum else None,
+                              checksum=checksum,
+                              checksum_cypher=checksum_cypher,
                               etag=self.etag() if chunksize else None,
                               chunksize=chunksize,
                               parent_id=self.parent_id,
