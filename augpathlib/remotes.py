@@ -885,7 +885,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
         # whatever cypher we want, unlike in other cases
         return cypher_command_lookup[self._cache_class.cypher]
 
-    def checksum(self):
+    def checksum(self, cypher=None):  # FIXME cypher should not be ignored
         remote_cmd = (f'{self.cypher_command} {self.rpath} | '
                       'awk \'{ print $1 }\';')
 
