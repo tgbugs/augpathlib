@@ -191,6 +191,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
     fieldsep = '.'  # must match the file extension splitter for Path ...
     subfieldsep = ';'  # only one level, not going recursive in a filename ...
     pathsep = '|'  # make sure that there are no path separators in the symlink
+    fieldsep_esc = '!'  # if you have bangs in your pathmeta I cannot help you
     versions = {'meta':('file_id',
                         'size',
                         'created',
@@ -295,7 +296,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         if isinstance(value, str) and '/' in value:
             if self.pathsep in value:
-                msg = f'Y U DO DIS >:| {value!r}'
+                msg = f'Y U DO DIS >:| {field}: {value!r}'
                 raise ValueError(msg)  # FIXME error type
             elif field == 'name':
                 msg = f'WHY DO YOU HAVE A / IN A FILE NAME !!!! {value!r}'
@@ -303,12 +304,12 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
             value = value.replace('/', self.pathsep)
 
-        if field == 'name' and '.' in value:
-            if self.pathsep in value:
-                msg = f'Y U DO DIS >:| {value!r}'
+        if isinstance(value, str) and self.fieldsep in value:
+            if self.fieldsep_esc in value:
+                msg = f'Y U DO DIS >:| {field}: {value!r}'
                 raise ValueError(msg)  # FIXME error type
 
-            value = value.replace('.', self.pathsep)
+            value = value.replace(self.fieldsep, self.fieldsep_esc)
 
         return _str_encode(field, value)
 
@@ -341,15 +342,16 @@ class _PathMetaAsSymlink(_PathMetaConverter):
             except ValueError:  # FIXME :/ uid vs owner_id etc ...
                 return value
 
-        elif field in ('id', 'mode', 'old_id', 'parent_id'):
+        elif field in ('name', 'id', 'mode', 'old_id', 'parent_id'):
             if self.pathsep in value:
+                if field == 'name':
+                    msg = f'WHY DO YOU HAVE A / IN A FILE NAME !!!! {value!r}'
+                    raise ValueError(msg)  # FIXME error type
+
                 value = value.replace(self.pathsep, '/')
 
-            return value
-
-        elif field in ('name',):
-            if self.pathsep in value:
-                value = value.replace(self.pathsep, '.')
+            if self.fieldsep_esc in value:
+                value = value.replace(self.fieldsep_esc, self.fieldsep)
 
             return value
 

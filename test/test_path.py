@@ -410,7 +410,7 @@ class TestPathMeta(unittest.TestCase):
                                         for field in tuple()])  # TODO
 
     def test_symlink_roundtrip(self):
-        meta = PathMeta(id='N:helloworld:123', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i have spaces.ext')
+        meta = PathMeta(id='N:helloworld:123/lol.hello/sigh', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i have spaces.ext')
         path = self.test_path
         path._cache = SymlinkCache(path, meta=meta)
         path.cache.meta = meta
@@ -418,6 +418,34 @@ class TestPathMeta(unittest.TestCase):
         path.unlink()
         msg = '\n'.join([f'{k!r} {v!r} {getattr(new_meta, k)!r}' for k, v in meta.items()])
         assert meta == new_meta, msg
+
+    @pytest.mark.xfail
+    def test_symlink_fail_pipe_id(self):
+        meta = PathMeta(id='N:hello|world:123/lol.hello/sigh', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i have spaces.ext')
+        path = self.test_path
+        path._cache = SymlinkCache(path, meta=meta)
+        path.cache.meta = meta
+
+    @pytest.mark.xfail
+    def test_symlink_fail_slash_name(self):
+        meta = PathMeta(id='N:helloworld:123/lol.hello/sigh', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i/have spaces.ext')
+        path = self.test_path
+        path._cache = SymlinkCache(path, meta=meta)
+        path.cache.meta = meta
+
+    @pytest.mark.xfail
+    def test_symlink_fail_bang_id(self):
+        meta = PathMeta(id='N:hello!world:123/lol.hello/sigh', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i have spaces.ext')
+        path = self.test_path
+        path._cache = SymlinkCache(path, meta=meta)
+        path.cache.meta = meta
+
+    @pytest.mark.xfail
+    def test_symlink_fail_bang_name(self):
+        meta = PathMeta(id='N:helloworld:123/lol.hello/sigh', size=10, checksum=b'1;o2j\x9912\xffo3ij\x01123,asdf.', name='oh no i!have spaces.ext')
+        path = self.test_path
+        path._cache = SymlinkCache(path, meta=meta)
+        path.cache.meta = meta
 
     def _test_symlink_roundtrip_weird(self):
         path = LocalPathTest(test_base, 'testpath')  # FIXME random needed ...
