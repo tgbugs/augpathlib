@@ -76,20 +76,31 @@ class TestAugPath(Helper, unittest.TestCase):
         # this doesn't test passing deeper ...
         self.test_path.rmtree(ignore_errors=True, onerror=onerror)
 
-    def test_rmtree_symlinks(self):
-        """ make sure we don't rmtree through symlinks """
+    def _make_tp(self):
         tp = self.test_path
         tp.mkdir()
-        d = tp / 'dir'
-        t = tp / 'dir/target'
-        f = tp / 'dir/target/file'
+        d =  tp / 'dir'
+        t =  tp / 'dir/target'
+        f =  tp / 'dir/target/file'
         so = tp / 'dir/source'
-        s = tp / 'dir/source/symlink'
+        s =  tp / 'dir/source/symlink'
+        e1 = tp / 'dir/e1'
+        e2 = tp / 'dir/e1/e2'
+        s2 = tp / 'dir/source/link-to-empty'
+
         d.mkdir()
         t.mkdir()
         f.touch()
         so.mkdir()
         s.symlink_to(t)
+        e1.mkdir()
+        e2.mkdir()
+        s2.symlink_to(e1)
+        return d, t, f, so, s, e1, e2, s2
+
+    def test_rmtree_symlinks(self):
+        """ make sure we don't rmtree through symlinks """
+        d, t, f, so, s, *_ = self._make_tp()
         try:
             s.rmtree()
             assert False, 'should have failed!'
@@ -100,6 +111,41 @@ class TestAugPath(Helper, unittest.TestCase):
         assert not so.exists()
         assert f.exists() and t.exists()
         self.test_path.rmtree(onerror=onerror)
+
+    def test_rmdirtree(self):
+        d, t, f, so, s, e1, e2, s2 = self._make_tp()
+        d.rmdirtree()
+        assert d.exists()
+        assert t.exists()
+        assert f.exists()
+        assert s.exists()
+        assert so.exists()
+        assert not e1.exists()
+        assert not e2.exists()
+        assert s2.is_symlink() and not s2.exists()
+
+    def test_rmdirtree_symlink(self):
+        d, t, f, so, s, e1, e2, s2 = self._make_tp()
+        # don't traverse symlinks at all
+        try:
+            s.rmdirtree()
+        except NotADirectoryError as e:
+            pass
+
+        assert s.exists()
+        assert f.exists()
+        assert t.exists()
+
+        # don't traverse symlinks even if they point to empty folders
+        try:
+            s2.rmdirtree()
+            assert False, 'should have failed'
+        except NotADirectoryError as e:
+            pass
+
+        assert s2.exists()
+        assert e1.exists()
+        assert e2.exists()
 
     def test_relative_path_from(self):
         p1 = self.test_path / 'a' / 'b' / 'c' / 'd'

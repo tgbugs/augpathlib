@@ -577,6 +577,66 @@ class AugmentedPath(pathlib.Path):
 
         self._swap(target)
 
+    if sys.version_info >= (3, 12):  # 3.12 has walk built in
+        def rmdirtree(self):
+            """ like rmtree but only for empty folders
+            find path -type d -empty -delete
+            """
+            if self.is_symlink():
+                # match behavior of find ${symlink}
+                msg = f'{self} is a symlink'
+                raise NotADirectoryError(msg)
+
+            deleted = set()
+            for path, subs, files in self.walk(top_down=False):
+                has_subs = False
+                sps = set()
+                for sub in subs:
+                    sub_path = path / sub
+                    if sub_path_string not in deleted:
+                        has_subs = True
+                        break
+                    else:
+                        sps.add(sub_path)
+
+                if not files and not has_subs:
+                    path.rmdir()
+                    deleted.add(path)
+                    # remove any deleted subs because the next
+                    # level up only cares about this level
+                    # keeps potential memory usage down
+                    deleted.difference_update(sps)
+
+    else:  # os.walk version
+        def rmdirtree(self):
+            """ like rmtree but only for empty folders
+            find path -type d -empty -delete
+            """
+            if self.is_symlink():
+                # match behavior of find ${symlink}
+                msg = f'{self} is a symlink'
+                raise NotADirectoryError(msg)
+
+            deleted = set()
+            for path_string, subs, files in os.walk(self, topdown=False):
+                has_subs = False
+                sps = set()
+                for sub in subs:
+                    sub_path_string = os.path.join(path_string, sub)
+                    if sub_path_string not in deleted:
+                        has_subs = True
+                        break
+                    else:
+                        sps.add(sub_path_string)
+
+                if not files and not has_subs:
+                    self.__class__(path_string).rmdir()
+                    deleted.add(path_string)
+                    # remove any deleted subs because the next
+                    # level up only cares about this level
+                    # keeps potential memory usage down
+                    deleted.difference_update(sps)
+
     def rmtree(self, ignore_errors=False, onerror=None, DANGERZONE=False):
         """ DANGER ZONE """
         # FIXME make this atomic by renaming to a random name
