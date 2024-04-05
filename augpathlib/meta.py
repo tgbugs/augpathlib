@@ -255,7 +255,8 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'name',
                         'errors',)
     }
-    write_version = 'mdv4'  # update this on new version
+    versions['mdv5'] = versions['mdv4']
+    write_version = 'mdv5'  # update this on new version
     order = versions[write_version]
     extras = 'size.hr',
 
@@ -313,7 +314,7 @@ class _PathMetaAsSymlink(_PathMetaConverter):
 
         return _str_encode(field, value)
 
-    def decode(self, field, value):
+    def decode(self, field, value, version):
         if value == self.empty:
             return None
 
@@ -345,12 +346,15 @@ class _PathMetaAsSymlink(_PathMetaConverter):
         elif field in ('name', 'id', 'mode', 'old_id', 'parent_id'):
             if self.pathsep in value:
                 if field == 'name':
-                    msg = f'WHY DO YOU HAVE A / IN A FILE NAME !!!! {value!r}'
-                    raise ValueError(msg)  # FIXME error type
+                    if version >= 5:
+                        msg = f'WHY DO YOU HAVE A / IN A FILE NAME !!!! {value!r}'
+                        raise ValueError(msg)  # FIXME error type
 
-                value = value.replace(self.pathsep, '/')
+                    value = value.replace(self.pathsep, '.')
+                else:
+                    value = value.replace(self.pathsep, '/')
 
-            if self.fieldsep_esc in value:
+            if version >= 5 and self.fieldsep_esc in value:
                 value = value.replace(self.fieldsep_esc, self.fieldsep)
 
             return value
@@ -427,11 +431,12 @@ class _PathMetaAsSymlink(_PathMetaConverter):
     def from_parts(self, parts):
         data = parts[-1]
         _, version, *suffixes = data.split(self.fieldsep)
+        vint = int(version[3:])
         order = self.versions[version]
-        kwargs = {field:self.decode(field, value)
+        kwargs = {field:self.decode(field, value, vint)
                   for field, value in zip(order, suffixes)}
         path = pathlib.PurePosixPath(*parts)
-        kwargs['id'] = self.decode('id', str(path.parent))
+        kwargs['id'] = self.decode('id', str(path.parent), vint)
         return self.pathmetaclass(**kwargs)
 
 
