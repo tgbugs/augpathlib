@@ -746,12 +746,12 @@ class _CachePath(AugmentedPath):
     @property
     def cache_key(self):
         """ since some systems have compound ids ... """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     # TODO how to toggle fetch from remote to heal?
     @property
     def meta(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
         if hasattr(self, '_meta'):
             return self._meta  # for bootstrap
@@ -896,17 +896,22 @@ class _CachePath(AugmentedPath):
                        f'from previous fetch? {existing_cache_cache}')
                 raise ValueError(msg)
 
-            _lc = self.local.checksum(cypher=self._instance_cypher())
-            if meta.checksum is not None and _lc != meta.checksum:
-                # FIXME these checks need to be happning inside of
-                # the local.data setter since otherwise this is overkill
-                #breakpoint()
-                msg = f'{_lc.hex()!r} != {meta.checksum.hex()!r} for {self!r}'
-                log.critical(msg)
-                nmeta = {k: v for k, v in meta.items()}
-                nmeta['errors'] += ('checksum-mismatch',)
-                self._meta_setter(meta.__class__(**nmeta))
-                #raise BaseException()
+            if meta.errors and 'checksum-mismatch' in meta.errors:
+                # on a fetch where the file already exists checksum
+                # as being checked again, so this prevents the recheck
+                pass
+            else:
+                _lc = self.local.checksum(cypher=self._instance_cypher())
+                if meta.checksum is not None and _lc != meta.checksum:
+                    # FIXME these checks need to be happning inside of
+                    # the local.data setter since otherwise this is overkill
+                    #breakpoint()
+                    msg = f'{_lc.hex()!r} != {meta.checksum.hex()!r} for {self!r}'
+                    log.critical(msg)
+                    nmeta = {k: v for k, v in meta.items()}
+                    nmeta['errors'] += ('checksum-mismatch',)
+                    self._meta_setter(meta.__class__(**nmeta))
+                    #raise BaseException()
 
         if size_not_ok:
             log.warning(f'File is over the size limit {meta.size.mb} > {size_limit_mb}')
