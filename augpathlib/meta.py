@@ -44,6 +44,7 @@ class PathMeta:
                  checksum_cypher=None,  # have to store this as data sadly
                  etag=None,
                  chunksize=None,  # used for properly checksumming?
+                 multi=None,  # used to avoid having to scan rchildren multiple times
                  parent_id=None,  # used to detect reparents
                  id=None,
                  file_id=None,
@@ -82,6 +83,7 @@ class PathMeta:
         self.checksum_cypher = checksum_cypher
         self.etag = etag
         self.chunksize = chunksize
+        self.multi = multi
         self.parent_id = parent_id
         self.id = id
         self.file_id = file_id
@@ -253,10 +255,26 @@ class _PathMetaAsSymlink(_PathMetaConverter):
                         'user_id',
                         'mode',
                         'name',
-                        'errors',)
+                        'errors',),
+                'mdv6':('file_id',
+                        'size',
+                        'created',
+                        'updated',
+                        'checksum',
+                        'checksum_cypher',
+                        'etag',
+                        'chunksize',
+                        'multi',  # added
+                        'parent_id',
+                        'old_id',
+                        'gid',
+                        'user_id',
+                        'mode',
+                        'name',
+                        'errors',),
     }
     versions['mdv5'] = versions['mdv4']
-    write_version = 'mdv5'  # update this on new version
+    write_version = 'mdv6'  # update this on new version
     order = versions[write_version]
     extras = 'size.hr',
 
@@ -453,6 +471,7 @@ class _PathMetaAsXattrs(_PathMetaConverter):
               'checksum_cypher',
               'etag',
               'chunksize',
+              'multi',
               'parent_id',
               'id',
               'file_id',
@@ -617,10 +636,12 @@ class _PathMetaAsPretty(_PathMetaConverter):
               'parent_id',
               'id',
               'file_id',
-              'old_id',
               'gid',
               'user_id',
               'mode',
+              'name',
+              'old_id',
+              'multi',
               'errors')
 
     def __init__(self):
@@ -834,6 +855,7 @@ class _EncodeByField:
     def checksum(self, value): return value
     def etag(self, value): return f'{value[0].hex()}-{value[1]}'  # checksum-count  # TODO pack this?
     def chunksize(self, value): return str(value)
+    def multi(self, value): return str(value)
     def parent_id(self, value): return str(value)
     def file_id(self, value): return str(value)
     def gid(self, value): return str(value)

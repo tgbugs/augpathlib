@@ -1239,7 +1239,20 @@ class LocalPath(EatPath, AugmentedPath):
 
         self.__change_tuple = change_tuple  # TODO log or no?
 
-        updated = datetime.fromtimestamp(fs_data_modified_time, tz=timezone.utc)
+        # XXX interpretational note here, nearly all file systems do not have
+        # a file birthdate that they track and the remote that we work against
+        # treats files as immutable objects, what this means is that posix mtime
+        # or data modified time is equivalent to remote created time because any
+        # change to a file is technically the deletion of an old file and the
+        # creation of a new file that happen to reside at the same path and the
+        # remote updated time thus tracks only changes to associated metadata
+        # just like unix ctime, determining whether a file write results in the
+        # creation of a a new inode and thus a new birthdate etc. is thus avoided
+        # and the "first time I saw a file at this particular path location" becomes
+        # a question that has to be answered in some other way
+        created = datetime.fromtimestamp(fs_data_modified_time, tz=timezone.utc)
+        updated = datetime.fromtimestamp(fs_metadata_changed_time, tz=timezone.utc)
+
         # sanity check
         # td = (datetime.fromtimestamp(fs_data_modified_time, tz=timezone.utc)
               # - datetime(1970, 1, 1, tzinfo=timezone.utc))
@@ -1253,12 +1266,12 @@ class LocalPath(EatPath, AugmentedPath):
         cypher = (  # FIXME hack around terrible design
             self._cache_class.cypher
             if self._cache_class and self._cache_class.cypher
-            else default_cypher)
+            else default_cypher)  # FIXME doesn't handle the case where the checksum may differ per file
         checksum = self.checksum(cypher) if checksum else None
         checksum_cypher = cypher_algo[cypher] if checksum else None
         self._meta = PathMeta(name=self.name,
                               size=st.st_size,
-                              created=None,
+                              created=created,
                               updated=updated,
                               checksum=checksum,
                               checksum_cypher=checksum_cypher,
