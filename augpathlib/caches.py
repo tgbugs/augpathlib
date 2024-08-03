@@ -891,7 +891,7 @@ class _CachePath(AugmentedPath):
             existing_cache_cache = self.local_object_cache_path.exists()
             self.local.data = self.data  # note that this should trigger storage to .ops/objects
             if self.local.size != meta.size:
-                m2 = '.operations/objects/' + self.id.replace(':', '\:')  # FIXME not abstracted
+                m2 = '.operations/objects/' + self.id.replace(':', '\\:')  # FIXME not abstracted
                 msg = (f'{self.local.size} != {meta.size} for {self.local}\n{m2}\n'
                        f'from previous fetch? {existing_cache_cache}')
                 raise ValueError(msg)

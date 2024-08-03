@@ -47,7 +47,7 @@ def fs_safe_id(string):
     NOTE this only deals with bad printable chars not
     the full pathology that one might encounter. """
     # see https://stackoverflow.com/questions/1976007/
-    evils = ' \n\t*|:\/<>"\\?'
+    evils = ' \n\t*|:\\/<>\'"?'
     for evil in evils:
         string = string.replace(evil, '-')
     return string
