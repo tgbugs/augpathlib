@@ -295,6 +295,11 @@ class _CachePath(AugmentedPath):
                     return drv, root, parts + parts2
                 return drv2, root2, parts2
 
+            if len(args) > 1:  # assume we passed parts of a path
+                __args = args
+                _args = self._format_parsed_parts('', '', args) # XXX seems wrong but seems to work?
+                args = _args,
+
             drv, root, parts = self._parse_path(*args)
             drv, root, parts = join_parsed_parts(self,
                 self._drv, self._root, self._tail, drv, root, parts)
@@ -311,7 +316,7 @@ class _CachePath(AugmentedPath):
             cls = type(self)
             out = cls.__new__(cls, *pathsegments)
             # must call this for 3.12 so that _raw_paths is populated
-            pathlib.PurePath.__init__(out)
+            pathlib.PurePath.__init__(out, *pathsegments)
             return out
 
     elif sys.version_info >= (3, 10):

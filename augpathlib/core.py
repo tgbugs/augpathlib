@@ -593,7 +593,7 @@ class AugmentedPath(pathlib.Path):
                 sps = set()
                 for sub in subs:
                     sub_path = path / sub
-                    if sub_path_string not in deleted:
+                    if sub_path not in deleted:
                         has_subs = True
                         break
                     else:
