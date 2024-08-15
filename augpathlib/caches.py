@@ -295,7 +295,7 @@ class _CachePath(AugmentedPath):
                     return drv, root, parts + parts2
                 return drv2, root2, parts2
 
-            drv, root, parts = self._parse_path(args)
+            drv, root, parts = self._parse_path(*args)
             drv, root, parts = join_parsed_parts(self,
                 self._drv, self._root, self._tail, drv, root, parts)
             child = self._from_parsed_parts(drv, root, parts)  # short circuits
@@ -305,6 +305,14 @@ class _CachePath(AugmentedPath):
                 raise ValueError('should not happen')
 
             return child
+
+        def with_segments(self, *pathsegments):
+            # must override this otherwise __init__ is called and breaks our construction rules
+            cls = type(self)
+            out = cls.__new__(cls, *pathsegments)
+            # must call this for 3.12 so that _raw_paths is populated
+            pathlib.PurePath.__init__(out)
+            return out
 
     elif sys.version_info >= (3, 10):
         def _make_child(self, args, remote, update_meta=True):
