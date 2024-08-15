@@ -31,12 +31,15 @@ class TestSshRemote(TestPathHelper, unittest.TestCase):
         remote_id = remote_root.as_posix()
 
         hostname = gethostname()
+        assert not hasattr(self.Path._cache_class, '_anchor'), 'oops should not have cache anchor yet'
         # this_folder.meta is sort of one extra level of host keys
         try:
             anchor = project_path.cache_init(hostname + ':' + remote_id, anchor=True)
-        except TypeError:  # pxssh fail
+        except TypeError as e:  # pxssh fail
+            log.exception(e)
             anchor = project_path.cache_init(hostname + '-local:' + remote_id, anchor=True)
 
+        assert hasattr(self.Path._cache_class, '_anchor'), 'oops no cache anchor'
         # FIXME remote_root doesn't actually work for ssh remotes, it is always '/'
         #anchor = project_path.cache_init('/')  # this_folder.meta is sort of one extra level of host keys
         self.this_file = self.Path(__file__)
@@ -49,7 +52,15 @@ class TestSshRemote(TestPathHelper, unittest.TestCase):
     def test_parent(self):
         r = self.this_file_darkly
         l = self.Path(r.local)
+        assert hasattr(l._cache_class, '_anchor'), 'oops no cache anchor'
         # FIXME utterly broken on 3.12
+        r.parent.local
+        r.local.parent
+        l.parent
+        assert hasattr(l.parent._cache_class, '_anchor'), 'oops no cache anchor'
+        l.parent.remote  # the problem in 3.12 happens here
+        l.remote.parent
+        r.parent
         assert r.parent.local == r.local.parent == l.parent
         assert l.parent.remote == l.remote.parent == r.parent
 

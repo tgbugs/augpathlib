@@ -636,7 +636,8 @@ class SshRemote(RemotePath, pathlib.PurePath):
             # FIXME not great but allows less verbose where possible ...
             # also possibly an opportunity to check if hostnames match?
             # ugh unix everything is a stream of bytes is annoying here
-            _, *args = (args[0].split(':', 1), *args[1:])
+            _args = args
+            _, *args = (*args[0].split(':', 1), *args[1:])
 
         _self = pathlib.PurePath.__new__(cls, *args)  # no kwargs since the only kwargs are for init
         _self.remote_platform = _self._remote_platform
@@ -677,7 +678,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
 
             if sys.version_info >= (3, 12):  # FIXME HACK
                 cls._anchor = pathlib.PurePath.__new__(cls, path)
-                pathlib.PurePath.__init__(cls._anchor)  # don't include path for anchor it will dupe
+                pathlib.PurePath.__init__(cls._anchor, path)
             else:
                 cls._anchor = pathlib.PurePath.__new__(cls, path)
 
@@ -797,9 +798,8 @@ class SshRemote(RemotePath, pathlib.PurePath):
             # sort of problems, so workaround using rpath
             try:
                 return (pathlib.PurePath(self.rpath)
-                        .relative_to(pathlib.PurePath(self.rpath))
+                        .relative_to(pathlib.PurePath(remote.rpath))
                         .parts)
-                #return self.relative_to(remote, walk_up=True).parts
             except Exception as e:
                 breakpoint()
                 raise e

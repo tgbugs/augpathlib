@@ -353,6 +353,7 @@ class AugmentedPath(pathlib.Path):
     else:
         @classmethod
         def _bind_flavours(cls, pos_helpers=tuple(), win_helpers=tuple()):
+            cls.__abstractpath = cls
             pass
 
     @classmethod
@@ -372,7 +373,11 @@ class AugmentedPath(pathlib.Path):
         @classmethod
         def _abstract_class(cls):
             # FIXME not sure if this will work the way we want
-            return cls
+            # currently a workaround where we still need to call
+            # _bind_flavours to mark the classes that are the actual
+            # ones that hold common information (e.g. _anchor)
+            return cls.__abstractpath
+
     else:
         @classmethod
         def _abstract_class(cls):
