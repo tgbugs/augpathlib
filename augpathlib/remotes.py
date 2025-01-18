@@ -7,6 +7,7 @@ import subprocess
 from augpathlib import exceptions as exc
 from augpathlib.meta import PathMeta
 from augpathlib import caches, LocalPath
+from augpathlib.core import need_flavour
 from augpathlib.utils import _bind_sysid_, StatResult, cypher_command_lookup, log
 if os.name != 'nt':
     # pexpect on windows does not support pxssh
@@ -629,7 +630,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
         return pos, win
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_flavour'):
+        if need_flavour and not hasattr(cls, '_flavour'):
             cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
 
         if isinstance(args[0], str) and args[0].startswith(cls.host + ':'):
@@ -673,7 +674,7 @@ class SshRemote(RemotePath, pathlib.PurePath):
 
             cls.root = host_path
 
-            if not hasattr(cls, '_flavour'):
+            if need_flavour and not hasattr(cls, '_flavour'):
                 cls = cls.__windowspath if os.name == 'nt' else cls.__posixpath
 
             if sys.version_info >= (3, 12):  # FIXME HACK

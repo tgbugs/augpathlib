@@ -57,20 +57,25 @@ else:
 
 need_flavour = sys.version_info < (3, 12)
 
+if sys.version_info < (3, 13):
+    _pathlib = pathlib
+else:
+    _pathlib = pathlib._abc
+
 if sys.version_info >= (3, 7):
-    pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
-    _IGNORED_WINERRORS = pathlib._IGNORED_WINERRORS
+    _pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
+    _IGNORED_WINERRORS = _pathlib._IGNORED_WINERRORS
     if sys.version_info < (3, 11):
-        pathlib._IGNORED_ERROS += (ELOOP,)
+        _pathlib._IGNORED_ERROS += (ELOOP,)
         if sys.platform == 'darwin':
             # darwin gets very confused by self referential symlinks
             # and it seems that they stack up on eachother while being
             # dereferenced until the link name becomes too long
-            pathlib._IGNORED_ERROS += (errno.ENAMETOOLONG,)
+            _pathlib._IGNORED_ERROS += (errno.ENAMETOOLONG,)
     else:
-        pathlib._IGNORED_ERRNOS += (ELOOP,)
+        _pathlib._IGNORED_ERRNOS += (ELOOP,)
         if sys.platform == 'darwin':
-            pathlib._IGNORED_ERRNOS += (errno.ENAMETOOLONG,)
+            _pathlib._IGNORED_ERRNOS += (errno.ENAMETOOLONG,)
 else:
 
     def _is_dir(entry):
