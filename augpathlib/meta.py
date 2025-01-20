@@ -6,7 +6,7 @@ import struct
 import pathlib
 from datetime import datetime
 from dateutil import parser as dateparser
-from terminaltables import AsciiTable
+from terminaltables3 import AsciiTable
 from augpathlib import exceptions as exc
 from augpathlib.utils import log, FileSize, red
 

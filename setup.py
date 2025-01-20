@@ -70,7 +70,7 @@ setup(
         #'psutil',
         'python-dateutil',
         "pyxattr; os_name != 'nt'",
-        'terminaltables',
+        'terminaltables3',
         #'Xlib',
     ],
     extras_require={'dev': ['pytest-cov', 'wheel'],
