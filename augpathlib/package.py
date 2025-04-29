@@ -1,9 +1,6 @@
 import importlib.util
 from urllib.parse import urlparse
 
-import setuptools
-from setuptools.dist import Distribution
-from setuptools.command.egg_info import manifest_maker, FileList, log as eilog
 from packaging.version import parse as parse_version
 
 from .repo import RepoPath
@@ -11,36 +8,37 @@ from .utils import log as _log
 
 log = _log.getChild('package')
 
-eilog.set_threshold(99)
-
-_orig_setup = setuptools.setup
-
-
-def _run_setup(setup_file, *args, **kwargs):
-    try:
-        last_output = [None]
-        def fake_setup(*args, _setup=setuptools.setup, **kwargs):
-            last_output[0] = args, kwargs
-
-        setuptools.setup = fake_setup
-        spec = importlib.util.spec_from_file_location('setup', setup_file)
-        setup = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(setup)
-        args, kwargs = last_output[0]
-        return setup, args, kwargs
-    finally:
-        setuptools.setup = _orig_setup
-
 
 # https://docs.python.org/3/distutils/apiref.html#distutils.core.run_setup
 setup_use_kwargs = False
-if setup_use_kwargs:
-    from distutils.core import run_setup as SIGH
-    # yes the random writes to stdout are because we call run_setup
-    # not just import it and yes, it was someone touching the root logger
-    run_setup = _run_setup
-else:
-    from distutils.core import run_setup
+run_setup = None
+def load_run_setup():
+    if setup_use_kwargs:
+        global run_setup
+        import setuptools
+        _orig_setup = setuptools.setup
+        def _run_setup(setup_file, *args, **kwargs):
+            try:
+                last_output = [None]
+                def fake_setup(*args, _setup=setuptools.setup, **kwargs):
+                    last_output[0] = args, kwargs
+
+                setuptools.setup = fake_setup
+                spec = importlib.util.spec_from_file_location('setup', setup_file)
+                setup = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(setup)
+                args, kwargs = last_output[0]
+                return setup, args, kwargs
+            finally:
+                setuptools.setup = _orig_setup
+
+        from distutils.core import run_setup as SIGH
+        # yes the random writes to stdout are because we call run_setup
+        # not just import it and yes, it was someone touching the root logger
+        run_setup = _run_setup
+    else:
+        from distutils.core import run_setup as _run_setup
+        run_setup = _run_setup
 
 
 def vinc(thing, prefix=None):
@@ -168,6 +166,8 @@ class PackagePath(RepoPath):
         # paths before use, but there is still a bug
         import logging
         sigh = logging.getLogger().level
+        load_run_setup()
+
         with self.folder:
             #print('cwd', aug.AugmentedPath.cwd(), '\nsf', self.setup_file)
             try:
@@ -332,10 +332,19 @@ class PackagePath(RepoPath):
     def release_files(self):
         # use to get the list of files that will be included in a release
         # so that we can limit the log to only those files
-        mm = manifest_maker(Distribution())
+        if not hasattr(self, 'Distribution'):
+            from setuptools.command.egg_info import log as eilog
+            eilog.set_threshold(99)
+            from setuptools.dist import Distribution
+            self.Distribution = Distribution
+            from setuptools.command.egg_info import manifest_maker, FileList
+            self.manifest_maker = manifest_maker
+            self.FileList = FileList
+
+        mm = self.manifest_maker(self.Distribution())
         mm.distribution.script_name = 'setup.py'  # FIXME check path on this one
         mm.manifest = 'MANIFEST.in'
-        mm.filelist = FileList()
+        mm.filelist = self.FileList()
         with self.folder:
             mm.add_defaults()
             mm.read_template()
