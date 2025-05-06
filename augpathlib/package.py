@@ -214,12 +214,32 @@ class PackagePath(RepoPath):
 
         return self._pypi_json
 
+    _github_do_auth = False
+    def _github_session(self):
+        self._bind_requests()
+        if not hasattr(self, '_cache_github_session'):
+            session = self._requests.Session()
+            if self._github_do_auth:
+                import orthauth as oa
+                auth = oa.AuthConfig.runtimeConfig({
+                    'config-search-paths': ['{:user-config-path}/orthauth/user.sxpr'],
+                    'auth-variables': {'github-api-token': None}})
+                ght = auth.get('github-api-token')
+                headers = {'Authorization': f'Bearer {ght}'}
+                session.headers.update(headers)
+
+            self._cache_github_session = session
+
+        return self._cache_github_session
+
     @property
     def github_json(self):
         if not hasattr(self, '_github_json'):
-            self._bind_requests()
-            self._github_request = self._requests.get(self.remote_uri_api('/releases'))
+            session = self._github_session()
+            self._github_request = session.get(self.remote_uri_api('/releases'))
             if not self._github_request.ok:
+                if self._github_request.status_code == 403:
+                    log.info((self._github_request.url, self._github_request.json()))
                 return  # e.g. hit rate limit when testing
 
             self._github_json = self._github_request.json()
@@ -368,7 +388,7 @@ class PackagePath(RepoPath):
         log = self.repo.git.log("--format='%aI %an %h %s'",
                                 f'{tag}..HEAD',
                                 '--', *rfs)
-        entries = [e[1:-1] for e in log.split('\n')]
+        entries = [_ for _ in [e[1:-1] for e in log.split('\n')] if _]
         return entries
 
     @property
