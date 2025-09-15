@@ -59,10 +59,14 @@ need_flavour = sys.version_info < (3, 12)
 
 if sys.version_info < (3, 13):
     _pathlib = pathlib
-else:
+elif sys.version_info < (3, 14):
     _pathlib = pathlib._abc
 
-if sys.version_info >= (3, 7):
+if sys.version_info >= (3, 14):
+    # all OSErrors are ignored now it seems
+    pass
+
+elif sys.version_info >= (3, 7):
     _pathlib._IGNORED_WINERRORS += _IGNORED_WINERRORS
     _IGNORED_WINERRORS = _pathlib._IGNORED_WINERRORS
     if sys.version_info < (3, 11):
@@ -76,6 +80,7 @@ if sys.version_info >= (3, 7):
         _pathlib._IGNORED_ERRNOS += (ELOOP,)
         if sys.platform == 'darwin':
             _pathlib._IGNORED_ERRNOS += (errno.ENAMETOOLONG,)
+
 else:
 
     def _is_dir(entry):
